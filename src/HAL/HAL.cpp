@@ -72,7 +72,7 @@ void HAL::Init(void)
     static lv_fs_drv_t fs_drv;
     lv_fs_drv_init(&fs_drv);
 
-    fs_drv.letter = '/';
+    fs_drv.letter = 'S';
     fs_drv.open_cb = fs_open;
     fs_drv.close_cb = fs_close;
     fs_drv.read_cb = fs_read;

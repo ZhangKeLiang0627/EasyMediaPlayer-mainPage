@@ -1,0 +1,20 @@
+{
+  "brightness": 75,
+  "volume": 50,
+  "applications": [
+    {
+      "name": "videoPlayer",
+      "exec": "eMP_video",
+      "argv": "<null>",
+      "icon": "eMP_video_icon.bin",
+      "config": "eMP_video_config.json"
+    },
+    {
+      "name": "App2",
+      "exec": "/mnt/UDISK/eMP_video",
+      "argv": "<null>",
+      "icon": "eMP_video_icon.bin",
+      "config": "App2.json"
+    }
+  ]
+}

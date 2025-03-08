@@ -36,11 +36,11 @@ namespace Page
             lv_anim_timeline_t *anim_timelineClick;
         } ui;
 
-        void create(Operations &opts);
+        void create(void);
         void release(void);
+        void setOperations(Operations &opts);
         void appearAnimStart(bool reverse = false);
         void appearAnimClick(bool reverse = false);
-
         void addApplication(const char *name, const char *exec, char *const argv[], void *icon);
 
     private:

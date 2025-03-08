@@ -11,7 +11,7 @@ LVGL_DIR ?= ./libs
 BUILD_DIR = ./build
 PROJECT_DIR ?= ${shell pwd}
 
-CFLAGS ?= -O3 -g0 -I$(LVGL_DIR)/ -Wall -Wno-unused-function -Wno-unused-variable -Wno-return-type -Wno-sign-compare
+CFLAGS ?= -O3 -g0 -I$(LVGL_DIR)/ -Wall -Wno-unused-function -Wno-unused-variable -Wno-return-type -Wno-sign-compare -Wno-misleading-indentation
 LDFLAGS ?= -lm
 CXXFLAGS ?= $(CFLAGS) 
 

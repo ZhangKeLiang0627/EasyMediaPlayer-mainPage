@@ -16,3 +16,10 @@ export STAGING_DIR=/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target
 ## 运行
 
 可执行文件为：`eMP_mainPage`
+
+## 文件
+
+`./configs/sysconfig.json`
+
+
+
