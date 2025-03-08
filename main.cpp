@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     // model初始化
     model = new Page::Model(exitCallback, lv_mutex);
 
-    lv_obj_fade_in(lv_scr_act(), 500, 0);
+    lv_obj_fade_in(lv_scr_act(), 1000, 0);
 
     /* Handle LitlevGL tasks (tickless mode) */
     pthread_create(&threadLvgl, NULL, threadLvglHandler, NULL);

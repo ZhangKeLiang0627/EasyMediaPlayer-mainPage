@@ -19,27 +19,27 @@ void View::create(Operations &opts)
 
     lv_obj_t *btnCont = lv_obj_create(cont);
     lv_obj_remove_style_all(btnCont);
-    lv_obj_set_size(btnCont, lv_pct(70), LV_VER_RES / 4);
+    lv_obj_set_size(btnCont, LV_HOR_RES / 2, LV_VER_RES / 2);
     lv_obj_clear_flag(btnCont, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(btnCont, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(btnCont, lv_color_hex(0x6a8d6d), 0);
-    lv_obj_align(btnCont, LV_ALIGN_BOTTOM_MID, 0, 42);
+    lv_obj_align(btnCont, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_radius(btnCont, 16, LV_PART_MAIN);
     ui.btnCont.cont = btnCont;
 
-    lv_obj_t *btn = btnCreate(btnCont, LV_SYMBOL_PLAY, -20);
-    lv_obj_add_event_cb(btn, buttonEventHandler, LV_EVENT_ALL, this);
+    lv_obj_t *btn = btnCreate(btnCont, LV_SYMBOL_PLAY, 0);
+    lv_obj_add_event_cb(btn, applicationEventHandler, LV_EVENT_ALL, this);
     ui.btnCont.btn = btn;
 
     /* Render octagon explode */
-    lv_obj_t *roundRect_1 = roundRectCreate(btnCont, 0, -20);
-    lv_obj_t *roundRect_2 = roundRectCreate(btnCont, 0, -20);
-    lv_obj_t *roundRect_3 = roundRectCreate(btnCont, 0, -20);
-    lv_obj_t *roundRect_4 = roundRectCreate(btnCont, 0, -20);
-    lv_obj_t *roundRect_5 = roundRectCreate(btnCont, 0, -20);
-    lv_obj_t *roundRect_6 = roundRectCreate(btnCont, 0, -20);
-    lv_obj_t *roundRect_7 = roundRectCreate(btnCont, 0, -20);
-    lv_obj_t *roundRect_8 = roundRectCreate(btnCont, 0, -20);
+    lv_obj_t *roundRect_1 = roundRectCreate(btnCont, 0, 0);
+    lv_obj_t *roundRect_2 = roundRectCreate(btnCont, 0, 0);
+    lv_obj_t *roundRect_3 = roundRectCreate(btnCont, 0, 0);
+    lv_obj_t *roundRect_4 = roundRectCreate(btnCont, 0, 0);
+    lv_obj_t *roundRect_5 = roundRectCreate(btnCont, 0, 0);
+    lv_obj_t *roundRect_6 = roundRectCreate(btnCont, 0, 0);
+    lv_obj_t *roundRect_7 = roundRectCreate(btnCont, 0, 0);
+    lv_obj_t *roundRect_8 = roundRectCreate(btnCont, 0, 0);
 
     // 动画的创建
     ui.anim_timeline = lv_anim_timeline_create();
@@ -139,20 +139,20 @@ lv_obj_t *View::btnCreate(lv_obj_t *par, const void *img_src, lv_coord_t y_ofs)
 {
     lv_obj_t *obj = lv_obj_create(par);
     lv_obj_remove_style_all(obj);
-    lv_obj_set_size(obj, 180, 50);
+    lv_obj_set_size(obj, LV_HOR_RES / 4, LV_VER_RES / 4);
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_align(obj, LV_ALIGN_CENTER, 0, y_ofs);
     lv_obj_set_style_bg_img_src(obj, img_src, 0);
 
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
-    lv_obj_set_style_width(obj, 75, LV_STATE_PRESSED); // 设置button按下时的长宽
-    lv_obj_set_style_height(obj, 25, LV_STATE_PRESSED);
+    lv_obj_set_style_width(obj, LV_HOR_RES / 6, LV_STATE_PRESSED); // 设置button按下时的长宽
+    lv_obj_set_style_height(obj, LV_VER_RES / 6, LV_STATE_PRESSED);
     lv_obj_set_style_bg_color(obj, lv_color_hex(0x356b8c), 0);                 // 设置按钮默认的颜色
     lv_obj_set_style_bg_color(obj, lv_color_hex(0x242947), LV_STATE_PRESSED);  // 设置按钮在被按下时的颜色
     lv_obj_set_style_bg_color(obj, lv_color_hex(0xf2daaa), LV_STATE_FOCUSED);  // 设置按钮在被聚焦时的颜色
     lv_obj_set_style_bg_color(obj, lv_color_hex(0xa99991), LV_STATE_DISABLED); // 设置按钮在被聚焦时的颜色
-    lv_obj_set_style_radius(obj, 9, 0);                                        // 按钮画圆角
+    lv_obj_set_style_radius(obj, 10, 0);                                       // 按钮画圆角
 
     static lv_style_transition_dsc_t tran;
     static const lv_style_prop_t prop[] = {LV_STYLE_WIDTH, LV_STYLE_HEIGHT, LV_STYLE_PROP_INV};
@@ -194,6 +194,17 @@ lv_obj_t *View::roundRectCreate(lv_obj_t *par, lv_coord_t x_ofs, lv_coord_t y_of
 }
 
 /**
+ * @brief 在主界面添加一个app icon
+ * @param name 应用程序名称
+ * @param exec 应用程序文件路径
+ * @param argv 应用程序参数
+ * @param icon 应用程序图标(lv_img)
+ */
+void View::addApplication(const char *name, const char *exec, char *const argv[], void *icon)
+{
+}
+
+/**
  * @brief 应用程序 icon 点击事件回调函数
  */
 void View::applicationEventHandler(lv_event_t *event)
@@ -204,10 +215,8 @@ void View::applicationEventHandler(lv_event_t *event)
     lv_event_code_t code = lv_event_get_code(event);
     lv_obj_t *obj = lv_event_get_current_target(event);
 
-
     if (code == LV_EVENT_SHORT_CLICKED)
     {
         instance->appearAnimClick();
-
     }
 }

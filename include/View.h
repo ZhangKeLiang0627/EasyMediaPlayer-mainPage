@@ -13,7 +13,7 @@ namespace Page
     struct Operations
     {
         ExitCb exitCb;
-        RunApplicationCb runApp; // 运行应用程序回调函数，参数为执行文件名称
+        RunApplicationCb runAppCb; // 运行应用程序回调函数，参数为执行文件名称
     };
 
     class View

@@ -22,12 +22,7 @@ Model::Model(std::function<void(void)> exitCb, pthread_mutex_t &mutex)
     Operations uiOpts = {0};
 
     uiOpts.exitCb = exitCb;
-    uiOpts.getStateCb = std::bind(&Model::getState, this);
-    uiOpts.getVolumeCb = std::bind(&Model::getVolume, this);
-    uiOpts.pauseCb = std::bind(&Model::pause, this);
-    uiOpts.playCb = std::bind(&Model::play, this, std::placeholders::_1);
-    uiOpts.setCurCb = std::bind(&Model::setCur, this, std::placeholders::_1);
-    uiOpts.setVolumeCb = std::bind(&Model::setVolume, this, std::placeholders::_1);
+    uiOpts.runAppCb = std::bind(&Model::runApplication, this, std::placeholders::_1, std::placeholders::_2);
 
     _view.create(uiOpts);
 
@@ -42,64 +37,6 @@ Model::~Model()
 }
 
 /**
- *@brief 搜索某个目录下的视频文件,支持多种格式
- *@param path 目录路径
- *@return 搜索到的视频个数
- */
-int Model::searchVideo(std::string path)
-{
-    int cnt = 0;
-    int i;
-    bool legalVideo = false;
-    std::string filePath;
-
-    struct dirent *ent;
-    DIR *dir = opendir(path.c_str());
-
-    for (i = 0;; i++)
-    {
-        ent = readdir(dir);
-        if (ent == NULL)
-            break;
-
-        if (ent->d_type == DT_REG)
-        {
-            const char *pfile = strrchr(ent->d_name, '.');
-            if (pfile != NULL)
-            {
-                filePath = path + std::string(ent->d_name);
-
-                for (int j = 0; j < sizeof(fileType) / sizeof(fileType[0]); j++)
-                {
-                    if (strcasecmp(pfile, fileType[j]) == 0)
-                    {
-                        printf("%s file\n", fileType[j]);
-                        legalVideo = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if (legalVideo == true)
-        {
-            legalVideo = false;
-
-            pthread_mutex_lock(_mutex);
-            _view.addVideoList(ent->d_name);
-            pthread_mutex_unlock(_mutex);
-
-            cnt++;
-        }
-
-        usleep(50000);
-    }
-
-    closedir(dir);
-
-    return cnt;
-}
-
-/**
  * @brief 线程处理函数
  *
  * @return void*
@@ -109,91 +46,112 @@ void *Model::threadProcHandler(void *arg)
     Model *model = static_cast<Model *>(arg); // 将arg转换为Model指针
     usleep(50000);
 
-    model->_mp = new MediaPlayer(); // 创建播放器
-    std::string url = "/mnt/UDISK/video1.mp4";
-    model->_mp->SetNewVideo(url);
-
     while (!model->_threadExitFlag)
     {
-        int cur = model->_mp->GetCurrentPos();
-        int total = model->_mp->GetDuration();
 
         pthread_mutex_lock(model->_mutex);
-        model->_view.setPlayProgress(cur / 1000, total / 1000);
+        // ...
         pthread_mutex_unlock(model->_mutex);
 
         usleep(50000);
     }
-
-    delete model->_mp;
 }
 
 /**
- * @brief UI获取视频播放状态回调函数
+ * @brief 运行 app 回调函数
+ * @brief exec app 执行文件
+ * @param app的main函数参数
+ * @note 由于回调函数被UI线程(主线程)执行，因此会阻塞UI线程
  */
-bool Model::getState(void)
+void Model::runApplication(const char *exec, char *const argv[])
 {
-    bool state = false;
-
-    if (_mp != nullptr)
-        state = _mp->GetState();
-
-    return state;
-}
-
-/**
- * @brief UI获取音量回调函数
- */
-int Model::getVolume(void)
-{
-    int volume = 0;
-
-    if (_mp != nullptr)
-        volume = _mp->GetVolume();
-
-    return volume;
-}
-
-/**
- * @brief UI暂停视频回调函数
- */
-void Model::pause(void)
-{
-    if (_mp != nullptr)
-        _mp->Pause();
-}
-
-/**
- * @brief UI播放视频回调函数
- */
-void Model::play(const char *name)
-{
-    if (name == NULL)
-    {
-        _mp->Start(); // 继续播放
+    if (exec == nullptr)
         return;
+
+    pid_t pid = fork(); // 创建子进程
+
+    if (pid == 0) // 子进程
+    {
+        int ret = execv(exec, argv);
+        if (ret < 0)
+        {
+            printf("[Sys] create %s failed\n", exec);
+            exit(0); // 子进程退出
+        }
     }
 
-    // 播放新的视频
-    std::string url = VIDEO_DIR + std::string(name);
-    _mp->SetNewVideo(url);
-    _mp->Start();
+    wait(nullptr); // 阻塞等待子进程返回
 }
 
 /**
- * @brief UI设置播放时间点回调函数
+ * @brief 将字符串参数转为 char**
+ * @return 带有应用程序执行路径的完整argv
+ * @最大支持5个参数
  */
-void Model::setCur(int cur)
+char **Model::stringToArgv(const char *exec, std::string &str)
 {
-    if (_mp != nullptr)
-        _mp->SetCurrentPos(cur * 1000);
+    int i = 0;
+    size_t dataStart = 0;
+    size_t dataEnd = 0;
+    std::string dataStr = "";
+
+    char **argv = new char *[5];
+
+    int len = strlen(exec) + 1;
+    argv[0] = new char[len];
+    sprintf(argv[i++], "%s", exec);
+
+    do
+    {
+        dataStart = str.find('<', dataEnd); // 寻找 < 字符
+        if (dataStart != std::string::npos)
+        {
+            dataStart += 1;
+            dataEnd = str.find('>', dataStart); // 寻找 >
+            if (dataEnd != std::string::npos)
+            {
+                dataStr = str.substr(dataStart, dataEnd - dataStart);
+                if (dataStr != "null")
+                {
+                    int len = dataStr.length() + 1;
+                    argv[i] = new char[len];
+                    sprintf(argv[i], "%s", dataStr.c_str());
+                }
+                else
+                {
+                    argv[i] = nullptr;
+                    break;
+                }
+            }
+        }
+    } while (++i < 5);
+
+    return argv;
 }
 
 /**
- * @brief UI设置音量回调函数
+ *@brief 安装应用程序
+ *@param apps 应用程序表
  */
-void Model::setVolume(int volume)
+void Model::installApplications(std::vector<AppInfo> &appVector)
 {
-    if (_mp != nullptr)
-        _mp->SetVolume(volume);
+    for (AppInfo &info : appVector)
+    {
+        int execLen = info.exec.length();
+        int iconLen = info.icon.length();
+
+        char *exec = new char[execLen + 3];
+        char *icon = new char[iconLen + 14];
+        const char *name = info.name.c_str();
+        char **argv;
+
+        sprintf(exec, "./%s", info.exec.c_str());
+        sprintf(icon, "S:./res/icon/%s", info.icon.c_str());
+        argv = stringToArgv(exec, info.argv);
+
+        _view.addApplication((name), exec, argv, icon); // 添加应用程序到UI
+
+        delete[] icon;
+        delete[] exec;
+    }
 }

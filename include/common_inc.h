@@ -12,7 +12,6 @@
 #include "../libs/lvgl/lvgl.h"
 #include "../libs/lv_drivers/display/sunxifb.h"
 #include "../libs/lv_drivers/indev/evdev.h"
-#include "MediaPlayer.h"
 #include "HAL.h"
 
 extern pthread_mutex_t lv_mutex;
