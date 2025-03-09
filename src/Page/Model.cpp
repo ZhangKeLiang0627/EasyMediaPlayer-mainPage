@@ -23,9 +23,6 @@ static const char *appInfoItemName[] =
 
 using namespace Page;
 
-/* 支持的视频文件格式 */
-static const char *fileType[] = {".avi", ".mkv", ".flv", ".ts", ".mp4", ".webm", "asf", "mpg", ".mpeg", ".mov", ".vob", ".3gp", ".wmv", ".pmp"};
-
 /**
  * @brief Model构造函数
  *
@@ -77,6 +74,8 @@ void *Model::threadProcHandler(void *arg)
     pthread_mutex_lock(model->_mutex);
     model->_view.create();
     model->installApplications(model->_sysConfig.appVector);
+    // model->_view.appearAnimStart();
+
     pthread_mutex_unlock(model->_mutex);
 
     while (!model->_threadExitFlag)

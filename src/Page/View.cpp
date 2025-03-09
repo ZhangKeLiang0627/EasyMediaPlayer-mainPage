@@ -31,83 +31,23 @@ void View::create(void)
     lv_obj_set_scroll_snap_y(btnCont, LV_SCROLL_SNAP_CENTER); // 设置在垂直滚动结束时捕捉子元素的位置：人话：打开菜单第一个item的位置，现在是居中
     ui.btnCont.cont = btnCont;
 
-    // lv_obj_t *btn = btnCreate(btnCont, LV_SYMBOL_PLAY, 0);
-    // lv_obj_add_event_cb(btn, applicationEventHandler, LV_EVENT_ALL, this);
-    // ui.btnCont.btn = btn;
+    // 动画的创建
+    ui.anim_timeline = lv_anim_timeline_create();
 
-    /* Render octagon explode */
-    // lv_obj_t *roundRect_1 = roundRectCreate(btnCont, 0, 0);
-    // lv_obj_t *roundRect_2 = roundRectCreate(btnCont, 0, 0);
-    // lv_obj_t *roundRect_3 = roundRectCreate(btnCont, 0, 0);
-    // lv_obj_t *roundRect_4 = roundRectCreate(btnCont, 0, 0);
-    // lv_obj_t *roundRect_5 = roundRectCreate(btnCont, 0, 0);
-    // lv_obj_t *roundRect_6 = roundRectCreate(btnCont, 0, 0);
-    // lv_obj_t *roundRect_7 = roundRectCreate(btnCont, 0, 0);
-    // lv_obj_t *roundRect_8 = roundRectCreate(btnCont, 0, 0);
+#define ANIM_DEF(start_time, obj, attr, start, end) \
+    {start_time, obj, LV_ANIM_EXEC(attr), start, end, 500, lv_anim_path_ease_out, true}
 
-    //     // 动画的创建
-    //     ui.anim_timeline = lv_anim_timeline_create();
-    //     // ui.anim_timelineClick = lv_anim_timeline_create();
+#define ANIM_OPA_DEF(start_time, obj) \
+    ANIM_DEF(start_time, obj, opa_scale, LV_OPA_COVER, LV_OPA_TRANSP)
 
-    // #define ANIM_DEF(start_time, obj, attr, start, end) \
-//     {start_time, obj, LV_ANIM_EXEC(attr), start, end, 500, lv_anim_path_ease_out, true}
+    lv_anim_timeline_wrapper_t wrapper[] =
+        {
+            ANIM_DEF(0, ui.btnCont.cont, height, 20, lv_obj_get_height(ui.btnCont.cont)),
+            ANIM_DEF(0, ui.btnCont.cont, width, 20, lv_obj_get_width(ui.btnCont.cont)),
 
-    // #define ANIM_OPA_DEF(start_time, obj) \
-//     ANIM_DEF(start_time, obj, opa_scale, LV_OPA_COVER, LV_OPA_TRANSP)
-
-    //     lv_anim_timeline_wrapper_t wrapper[] =
-    //         {
-    //             ANIM_DEF(0, ui.btnCont.cont, height, 20, lv_obj_get_height(ui.btnCont.cont)),
-    //             ANIM_DEF(0, ui.btnCont.cont, width, 20, lv_obj_get_width(ui.btnCont.cont)),
-
-    //             LV_ANIM_TIMELINE_WRAPPER_END // 这个标志着结构体成员结束，不能省略，在下面函数lv_anim_timeline_add_wrapper的轮询中做判断条件
-    //         };
-    //     lv_anim_timeline_add_wrapper(ui.anim_timeline, wrapper);
-
-    // lv_coord_t xOriginal = lv_obj_get_x_aligned(lv_obj_get_child(ui.btnCont.cont, 1));
-    // lv_coord_t yOriginal = lv_obj_get_y_aligned(lv_obj_get_child(ui.btnCont.cont, 1));
-
-    // lv_anim_timeline_wrapper_t wrapperForClick[] =
-    //     {
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 1), x, xOriginal, xOriginal - 30),
-    //         ANIM_OPA_DEF(300, lv_obj_get_child(ui.btnCont.cont, 1)),
-    //         {300, lv_obj_get_child(ui.btnCont.cont, 1), (lv_anim_exec_xcb_t)lv_obj_set_shadow_opa_scale, LV_OPA_COVER, LV_OPA_TRANSP, 500, lv_anim_path_ease_out, true},
-
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 2), x, xOriginal, xOriginal - 21),
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 2), y, yOriginal, yOriginal - 21),
-    //         ANIM_OPA_DEF(300, lv_obj_get_child(ui.btnCont.cont, 2)),
-    //         {300, lv_obj_get_child(ui.btnCont.cont, 2), (lv_anim_exec_xcb_t)lv_obj_set_shadow_opa_scale, LV_OPA_COVER, LV_OPA_TRANSP, 500, lv_anim_path_ease_out, true},
-
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 3), y, yOriginal, yOriginal - 30),
-    //         ANIM_OPA_DEF(300, lv_obj_get_child(ui.btnCont.cont, 3)),
-    //         {300, lv_obj_get_child(ui.btnCont.cont, 3), (lv_anim_exec_xcb_t)lv_obj_set_shadow_opa_scale, LV_OPA_COVER, LV_OPA_TRANSP, 500, lv_anim_path_ease_out, true},
-
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 4), x, xOriginal, xOriginal + 21),
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 4), y, yOriginal, yOriginal - 21),
-    //         ANIM_OPA_DEF(300, lv_obj_get_child(ui.btnCont.cont, 4)),
-    //         {300, lv_obj_get_child(ui.btnCont.cont, 4), (lv_anim_exec_xcb_t)lv_obj_set_shadow_opa_scale, LV_OPA_COVER, LV_OPA_TRANSP, 500, lv_anim_path_ease_out, true},
-
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 5), x, xOriginal, xOriginal + 30),
-    //         ANIM_OPA_DEF(300, lv_obj_get_child(ui.btnCont.cont, 5)),
-    //         {300, lv_obj_get_child(ui.btnCont.cont, 5), (lv_anim_exec_xcb_t)lv_obj_set_shadow_opa_scale, LV_OPA_COVER, LV_OPA_TRANSP, 500, lv_anim_path_ease_out, true},
-
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 6), x, xOriginal, xOriginal + 21),
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 6), y, yOriginal, yOriginal + 21),
-    //         ANIM_OPA_DEF(300, lv_obj_get_child(ui.btnCont.cont, 6)),
-    //         {300, lv_obj_get_child(ui.btnCont.cont, 6), (lv_anim_exec_xcb_t)lv_obj_set_shadow_opa_scale, LV_OPA_COVER, LV_OPA_TRANSP, 500, lv_anim_path_ease_out, true},
-
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 7), y, yOriginal, yOriginal + 30),
-    //         ANIM_OPA_DEF(300, lv_obj_get_child(ui.btnCont.cont, 7)),
-    //         {300, lv_obj_get_child(ui.btnCont.cont, 7), (lv_anim_exec_xcb_t)lv_obj_set_shadow_opa_scale, LV_OPA_COVER, LV_OPA_TRANSP, 500, lv_anim_path_ease_out, true},
-
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 8), x, xOriginal, xOriginal - 21),
-    //         ANIM_DEF(0, lv_obj_get_child(ui.btnCont.cont, 8), y, yOriginal, yOriginal + 21),
-    //         ANIM_OPA_DEF(300, lv_obj_get_child(ui.btnCont.cont, 8)),
-    //         {300, lv_obj_get_child(ui.btnCont.cont, 8), (lv_anim_exec_xcb_t)lv_obj_set_shadow_opa_scale, LV_OPA_COVER, LV_OPA_TRANSP, 500, lv_anim_path_ease_out, true},
-
-    //         LV_ANIM_TIMELINE_WRAPPER_END // 这个标志着结构体成员结束，不能省略，在下面函数lv_anim_timeline_add_wrapper的轮询中做判断条件
-    //     };
-    // lv_anim_timeline_add_wrapper(ui.anim_timelineClick, wrapperForClick);
+            LV_ANIM_TIMELINE_WRAPPER_END // 这个标志着结构体成员结束，不能省略，在下面函数lv_anim_timeline_add_wrapper的轮询中做判断条件
+        };
+    lv_anim_timeline_add_wrapper(ui.anim_timeline, wrapper);
 
     // appearAnimStart();
 }
@@ -276,8 +216,6 @@ void View::applicationEventHandler(lv_event_t *event)
     lv_obj_t *obj = lv_event_get_current_target(event);
 
     const char *exec = (const char *)lv_obj_get_user_data(obj);
-
-
 
     if (code == LV_EVENT_SHORT_CLICKED)
     {

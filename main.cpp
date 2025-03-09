@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     printf("[Sys] eMP_mainPage begin!\n");
 
     // 清除fb0
-    system("dd if=/dev/zero of=/dev/fb0");
+    // system("dd if=/dev/zero of=/dev/fb0");
     // 打开音频通路并设置音量
     system("amixer sset Headphone unmute");
     system("amixer sset \"Headphone volume\" 2");
