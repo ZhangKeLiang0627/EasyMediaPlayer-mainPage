@@ -74,8 +74,8 @@ void *Model::threadProcHandler(void *arg)
     pthread_mutex_lock(model->_mutex);
     model->_view.create();
     model->installApplications(model->_sysConfig.appVector);
-    // model->_view.appearAnimStart();
-
+    // 触发UI动画
+    model->_view.appearAnimStart();
     pthread_mutex_unlock(model->_mutex);
 
     while (!model->_threadExitFlag)
