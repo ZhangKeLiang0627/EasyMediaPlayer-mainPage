@@ -16,19 +16,17 @@ void View::create(void)
 
     lv_obj_t *btnCont = lv_obj_create(cont);
     lv_obj_remove_style_all(btnCont);
-    lv_obj_set_size(btnCont, lv_pct(80), LV_VER_RES / 2);
+    lv_obj_set_size(btnCont, 400, LV_VER_RES / 2);
     // lv_obj_clear_flag(btnCont, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(btnCont, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(btnCont, lv_color_hex(0x6a8d6d), 0);
     lv_obj_align(btnCont, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_radius(btnCont, 16, LV_PART_MAIN);
-
     lv_obj_set_style_pad_column(btnCont, 30, LV_PART_MAIN);
-
     lv_obj_set_flex_flow(btnCont, LV_FLEX_FLOW_ROW); // 设置弹性布局，item横着排，自动换行
     lv_obj_set_flex_align(btnCont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_scroll_dir(btnCont, LV_DIR_HOR);               // 设置画布滚动方向：垂直滚动
-    lv_obj_set_scroll_snap_y(btnCont, LV_SCROLL_SNAP_CENTER); // 设置在垂直滚动结束时捕捉子元素的位置：人话：打开菜单第一个item的位置，现在是居中
+    lv_obj_set_scroll_dir(btnCont, LV_DIR_HOR);               // 设置画布滚动方向：横向滚动
+    lv_obj_set_scroll_snap_x(btnCont, LV_SCROLL_SNAP_CENTER); // 设置在垂直滚动结束时捕捉子元素的位置：人话：打开菜单第一个item的位置，现在是居中
     ui.btnCont.cont = btnCont;
 
     // 动画的创建
@@ -116,8 +114,8 @@ lv_obj_t *View::btnCreate(lv_obj_t *par, void *img_src, const char *name)
     lv_label_set_text_fmt(label, "%s", name);
 
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
-    lv_obj_set_style_width(obj, LV_HOR_RES / 6, LV_STATE_PRESSED); // 设置button按下时的长宽
-    lv_obj_set_style_height(obj, LV_VER_RES / 6, LV_STATE_PRESSED);
+    lv_obj_set_style_width(obj, LV_HOR_RES / 5, LV_STATE_PRESSED); // 设置button按下时的长宽
+    lv_obj_set_style_height(obj, LV_VER_RES / 5, LV_STATE_PRESSED);
     lv_obj_set_style_bg_color(obj, lv_color_hex(0x356b8c), 0);                 // 设置按钮默认的颜色
     lv_obj_set_style_bg_color(obj, lv_color_hex(0x242947), LV_STATE_PRESSED);  // 设置按钮在被按下时的颜色
     lv_obj_set_style_bg_color(obj, lv_color_hex(0xf2daaa), LV_STATE_FOCUSED);  // 设置按钮在被聚焦时的颜色

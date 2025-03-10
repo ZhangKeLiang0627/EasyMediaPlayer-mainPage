@@ -11,10 +11,24 @@
     },
     {
       "name": "App2",
-      "exec": "/mnt/UDISK/eMP_video",
+      "exec": "<null>",
       "argv": "<null>",
-      "icon": "eMP_video_icon.bin",
+      "icon": "App2.bin",
       "config": "App2.json"
+    },
+    {
+      "name": "App3",
+      "exec": "<null>",
+      "argv": "<null>",
+      "icon": "App3.bin",
+      "config": "App3.json"
+    },
+    {
+      "name": "App4",
+      "exec": "<null>",
+      "argv": "<null>",
+      "icon": "App4.bin",
+      "config": "App4.json"
     }
   ]
 }
