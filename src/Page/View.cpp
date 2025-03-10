@@ -16,16 +16,16 @@ void View::create(void)
 
     lv_obj_t *btnCont = lv_obj_create(cont);
     lv_obj_remove_style_all(btnCont);
-    lv_obj_set_size(btnCont, LV_HOR_RES / 2, LV_VER_RES / 2);
+    lv_obj_set_size(btnCont, lv_pct(80), LV_VER_RES / 2);
     // lv_obj_clear_flag(btnCont, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(btnCont, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(btnCont, lv_color_hex(0x6a8d6d), 0);
     lv_obj_align(btnCont, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_radius(btnCont, 16, LV_PART_MAIN);
 
-    lv_obj_set_style_pad_hor(btnCont, 30, LV_PART_MAIN); // 设置每一个item的宽度
-    lv_obj_set_style_pad_row(btnCont, 30, LV_PART_MAIN); // 设置每一个item的间距
-    lv_obj_set_flex_flow(btnCont, LV_FLEX_FLOW_ROW);     // 设置弹性布局，item横着排，自动换行
+    lv_obj_set_style_pad_column(btnCont, 30, LV_PART_MAIN);
+
+    lv_obj_set_flex_flow(btnCont, LV_FLEX_FLOW_ROW); // 设置弹性布局，item横着排，自动换行
     lv_obj_set_flex_align(btnCont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_scroll_dir(btnCont, LV_DIR_HOR);               // 设置画布滚动方向：垂直滚动
     lv_obj_set_scroll_snap_y(btnCont, LV_SCROLL_SNAP_CENTER); // 设置在垂直滚动结束时捕捉子元素的位置：人话：打开菜单第一个item的位置，现在是居中
@@ -42,14 +42,14 @@ void View::create(void)
 
     lv_anim_timeline_wrapper_t wrapper[] =
         {
-            ANIM_DEF(0, ui.btnCont.cont, height, 20, lv_obj_get_height(ui.btnCont.cont)),
-            ANIM_DEF(0, ui.btnCont.cont, width, 20, lv_obj_get_width(ui.btnCont.cont)),
+            ANIM_DEF(0, ui.btnCont.cont, height, 20, 240),
+            ANIM_DEF(0, ui.btnCont.cont, width, 20, 384),
 
             LV_ANIM_TIMELINE_WRAPPER_END // 这个标志着结构体成员结束，不能省略，在下面函数lv_anim_timeline_add_wrapper的轮询中做判断条件
         };
     lv_anim_timeline_add_wrapper(ui.anim_timeline, wrapper);
 
-    // appearAnimStart();
+    appearAnimStart();
 }
 
 void View::release()
@@ -92,15 +92,28 @@ void View::appearAnimClick(bool reverse) // 按钮动画
     lv_anim_timeline_start(ui.anim_timelineClick);
 }
 
-lv_obj_t *View::btnCreate(lv_obj_t *par, const void *img_src, lv_coord_t y_ofs)
+lv_obj_t *View::btnCreate(lv_obj_t *par, void *img_src, const char *name)
 {
     lv_obj_t *obj = lv_obj_create(par);
     lv_obj_remove_style_all(obj);
     lv_obj_set_size(obj, LV_HOR_RES / 4, LV_VER_RES / 4);
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
+    // lv_obj_set_style_bg_img_src(obj, img_src, 0);
 
-    lv_obj_align(obj, LV_ALIGN_CENTER, 0, y_ofs);
-    lv_obj_set_style_bg_img_src(obj, img_src, 0);
+    // 设置图片
+    lv_obj_t *img = lv_img_create(obj);
+    lv_obj_remove_style_all(img);
+    lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, 0);
+    lv_img_set_src(img, img_src);
+    lv_obj_center(img);
+
+    // 设置名称
+    lv_obj_t *label = lv_label_create(obj);
+    lv_obj_remove_style_all(label);
+    lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_label_set_text_fmt(label, "%s", name);
 
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
     lv_obj_set_style_width(obj, LV_HOR_RES / 6, LV_STATE_PRESSED); // 设置button按下时的长宽
@@ -164,45 +177,11 @@ void View::addApplication(const char *name, const char *exec, char *const argv[]
     char *execFile = new char[len];
     strcpy(execFile, exec);
 
-    lv_obj_t *btn = btnCreate(ui.btnCont.cont, LV_SYMBOL_PLAY, 0);
+    lv_obj_t *btn = btnCreate(ui.btnCont.cont, icon, name);
     lv_obj_set_user_data(btn, execFile);
     lv_obj_add_event_cb(btn, applicationEventHandler, LV_EVENT_ALL, this);
     // ui.btnCont.btn = btn;
 }
-
-// /**
-//  * @brief 应用程序 icon 点击事件回调函数
-//  */
-// void applicationEventHandler(lv_event_t *event)
-// {
-//     lv_event_code_t code = lv_event_get_code(event);
-//     lv_obj_t *obj = lv_event_get_current_target(event);
-
-//     const char *exec = (const char *)lv_obj_get_user_data(obj);
-//     char *const *argv = (char *const *)lv_event_get_user_data(event);
-
-//     // 打印跳转下一个程序的信息
-//     printf("[Model] clickEventCb, exec:%s, argv:", exec);
-//     for (int i = 0; argv[i] != nullptr; i++)
-//     {
-//         printf("%s ", argv[i]);
-//     }
-//     printf("\n");
-
-//     if (exec != nullptr && argv != nullptr)
-//     {
-//         if (runApp != nullptr)
-//         {
-//             uiOpts.runApp(exec, argv);       // 运行应用程序,应用程序退出前阻塞在此
-//             lv_obj_invalidate(lv_scr_act()); // 重绘屏幕
-//         }
-//     }
-
-//     if (code == LV_EVENT_SHORT_CLICKED)
-//     {
-//         // instance->appearAnimClick();
-//     }
-// }
 
 /**
  * @brief 应用程序 icon 点击事件回调函数
@@ -219,7 +198,7 @@ void View::applicationEventHandler(lv_event_t *event)
 
     if (code == LV_EVENT_SHORT_CLICKED)
     {
-        printf("clickEventCb, exec: %s\n", exec);
+        printf("[View] clickEventCb, exec: %s\n", exec);
 
         if (exec != nullptr)
         {
@@ -229,6 +208,5 @@ void View::applicationEventHandler(lv_event_t *event)
                 lv_obj_invalidate(lv_scr_act());         // 重绘屏幕
             }
         }
-        // instance->appearAnimClick();
     }
 }

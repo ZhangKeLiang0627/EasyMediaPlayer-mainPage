@@ -48,7 +48,7 @@ namespace Page
         static void applicationEventHandler(lv_event_t *event);
 
         lv_obj_t *roundRectCreate(lv_obj_t *par, lv_coord_t x_ofs, lv_coord_t y_ofs);
-        lv_obj_t *btnCreate(lv_obj_t *par, const void *img_src, lv_coord_t y_ofs);
+        lv_obj_t *btnCreate(lv_obj_t *par, void *img_src, const char *name);
     };
 
 }

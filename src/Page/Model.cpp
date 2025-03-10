@@ -244,7 +244,8 @@ void Model::runApplication(const char *exec, char *const argv[])
         }
     }
 
-    wait(nullptr); // 阻塞等待子进程返回
+    wait(nullptr);           // 阻塞等待子进程返回
+    _view.appearAnimStart(); // 触发UI动画
 }
 
 /**
@@ -307,14 +308,18 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
 
         char *exec = new char[execLen + 3];
         char *icon = new char[iconLen + 14];
+
         const char *name = info.name.c_str();
         char **argv;
 
         sprintf(exec, "./%s", info.exec.c_str());
         sprintf(icon, "S:./res/icon/%s", info.icon.c_str());
-        argv = stringToArgv(exec, info.argv);
 
-        _view.addApplication((name), exec, argv, icon); // 添加应用程序到UI
+        printf("[Model] icon: %s\n", icon);
+
+        argv = stringToArgv(exec, info.argv);
+        // 添加应用程序到UI
+        _view.addApplication((name), exec, argv, icon); 
 
         delete[] icon;
         delete[] exec;
