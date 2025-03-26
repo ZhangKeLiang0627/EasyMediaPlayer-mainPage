@@ -15,6 +15,7 @@ void View::create(void)
     lv_obj_align(cont, LV_ALIGN_CENTER, 0, 0);
     ui.cont = cont;
 
+    // 按钮画布的创建
     lv_obj_t *btnCont = lv_obj_create(cont);
     lv_obj_remove_style_all(btnCont);
     lv_obj_set_size(btnCont, 400, LV_VER_RES / 2);

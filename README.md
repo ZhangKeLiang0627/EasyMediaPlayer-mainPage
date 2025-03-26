@@ -1,5 +1,9 @@
 # LVGL media player for Allwinner T113S3
 
+# eMP_mainPage
+
+![snapeShot](./pictures/image-1.jpg)
+
 ## 环境
 
 ```shell

@@ -10,15 +10,15 @@
       "config": "eMP_video_config.json"
     },
     {
-      "name": "App2",
-      "exec": "<null>",
+      "name": "Photos",
+      "exec": "eMP_picture",
       "argv": "<null>",
       "icon": "App2.bin",
       "config": "App2.json"
     },
     {
-      "name": "App3",
-      "exec": "<null>",
+      "name": "music",
+      "exec": "eMP_music",
       "argv": "<null>",
       "icon": "App3.bin",
       "config": "App3.json"
