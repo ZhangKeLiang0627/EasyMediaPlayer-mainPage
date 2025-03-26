@@ -2,7 +2,8 @@
 
 # eMP_mainPage
 
-![snapeShot](./pictures/image-1.jpg)
+## Snapshots
+![](./pictures/image-1.jpg)
 
 ## 环境
 
