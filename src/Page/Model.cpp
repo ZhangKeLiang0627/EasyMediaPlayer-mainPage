@@ -18,7 +18,7 @@ static const char *appInfoItemName[] =
         "config",
 };
 
-#define CONFIG_DIR "./configs/"
+#define CONFIG_DIR "./config/"
 #define CONFIG_FILE "sysconfig.json"
 
 using namespace Page;
@@ -98,7 +98,7 @@ bool Model::readConfig(void)
     std::ifstream file;
     _legalConfigAppNum = 0;
 
-    // 打开 "./configs/sysconfig.json"
+    // 打开 "./config/sysconfig.json"
     file.open(CONFIG_DIR CONFIG_FILE, std::ios::in);
 
     if (file.is_open() != true)
@@ -109,7 +109,7 @@ bool Model::readConfig(void)
         AppInfo info = {.name = "eMP_mainPage", .exec = "eMP_mainPage", .argv = "<null>", .icon = "eMP_mainPage.bin", .config = ""};
         _sysConfig.appVector.push_back(info);
 
-        printf("[Sys] Open \"./configs/sysconfig.json\" failed! Please check!\n");
+        printf("[Sys] Open \"./config/sysconfig.json\" failed! Please check!\n");
 
         return false;
     }
@@ -313,7 +313,7 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
         char **argv;
 
         sprintf(exec, "./%s", info.exec.c_str());
-        sprintf(icon, "S:./res/icon/%s", info.icon.c_str());
+        sprintf(icon, "S:./picture/icon/%s", info.icon.c_str());
 
         printf("[Model] icon: %s\n", icon);
 

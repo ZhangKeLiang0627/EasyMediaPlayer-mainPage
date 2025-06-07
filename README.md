@@ -24,7 +24,7 @@ export STAGING_DIR=/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target
 
 ## 文件
 
-`./configs/sysconfig.json`
+`./config/sysconfig.json`：该文件存储了系统的各种自定义变量，如亮度、音量等，还是其他APP应用的接口设置的地方。
 
 
 
