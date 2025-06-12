@@ -22,6 +22,7 @@ CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include
 CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include/allwinner
 CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include/allwinner/include 
 CFLAGS += -I$(PROJECT_DIR)/include
+CFLAGS += -I$(PROJECT_DIR)/utils
 
 CFLAGS += -pipe -march=armv7-a -mtune=cortex-a7 -mfpu=neon -mfloat-abi=hard -fstack-protector  
 
@@ -36,6 +37,9 @@ LDFLAGS += -ltplayer -lcdx_base -lncurses -lpthread -lstdc++
 MAINSRC += ./main.cpp
 CSRCS += $(shell find -L $(PROJECT_DIR)/src -name "*.c")
 CXXSRCS += $(shell find -L $(PROJECT_DIR)/src -name "*.cpp")
+
+CSRCS += $(shell find -L $(PROJECT_DIR)/utils -name "*.c")
+CXXSRCS += $(shell find -L $(PROJECT_DIR)/utils -name "*.cpp")
 
 include $(LVGL_DIR)/lvgl/lvgl.mk
 include $(LVGL_DIR)/lv_drivers/lv_drivers.mk

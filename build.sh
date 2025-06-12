@@ -5,4 +5,5 @@ make -j4
 mkdir -p build
 
 mv *.o build/
-find ./src -type f -name "*.o" -exec mv {} ./build/ \;  
+find ./src -type f -name "*.o" -exec mv {} ./build/ \; 
+find ./utils -type f -name "*.o" -exec mv {} ./build/ \;  
