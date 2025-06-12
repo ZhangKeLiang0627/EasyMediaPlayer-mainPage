@@ -1,6 +1,6 @@
 #include "Model.h"
 #include <sys/wait.h>
-#include "cJSON.h"
+#include "../utils/cJSON/cJSON.h"
 #include <fstream>
 
 static const char *configNumberItemName[] =
@@ -319,7 +319,7 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
 
         argv = stringToArgv(exec, info.argv);
         // 添加应用程序到UI
-        _view.addApplication((name), exec, argv, icon); 
+        _view.addApplication((name), exec, argv, icon);
 
         delete[] icon;
         delete[] exec;
