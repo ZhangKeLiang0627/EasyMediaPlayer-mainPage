@@ -2,6 +2,8 @@
 
 using namespace Page;
 
+// LV_IMG_DECLARE(img_src_bootlogo);
+
 void View::create(void)
 {
     // 画布的创建
@@ -15,13 +17,24 @@ void View::create(void)
     lv_obj_align(cont, LV_ALIGN_CENTER, 0, 0);
     ui.cont = cont;
 
+    lv_obj_t *img = lv_obj_create(cont);
+    lv_obj_remove_style_all(img);
+    // lv_obj_set_style_bg_img_src(img, &img_src_bootlogo, 0);
+    lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_bg_img_opa(img, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_img_src(img, ResourcePool::GetImage("lawyer_close"), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(img, ResourcePool::GetImage("lawyer_open"), LV_STATE_PRESSED);
+    lv_obj_align_to(img, cont, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+
+    ui.image = img;
+
     // 按钮画布的创建
     lv_obj_t *btnCont = lv_obj_create(cont);
     lv_obj_remove_style_all(btnCont);
     lv_obj_set_size(btnCont, 400, LV_VER_RES / 2);
     // lv_obj_clear_flag(btnCont, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(btnCont, LV_OPA_70, 0);
-    lv_obj_set_style_bg_color(btnCont, lv_color_hex(0x6a8d6d), 0);
+    lv_obj_set_style_bg_opa(btnCont, LV_OPA_80, 0);
+    lv_obj_set_style_bg_color(btnCont, lv_color_hex(0xcccccc), 0);
     lv_obj_align(btnCont, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_radius(btnCont, 16, LV_PART_MAIN);
     lv_obj_set_style_pad_column(btnCont, 30, LV_PART_MAIN);

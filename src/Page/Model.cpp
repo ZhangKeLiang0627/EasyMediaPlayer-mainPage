@@ -1,6 +1,7 @@
 #include "Model.h"
 #include <sys/wait.h>
 #include "../utils/cJSON/cJSON.h"
+#include "ResourcePool.h"
 #include <fstream>
 
 static const char *configNumberItemName[] =
@@ -42,6 +43,9 @@ Model::Model(std::function<void(void)> exitCb, pthread_mutex_t &mutex)
 
     _view.setOperations(uiOpts);
 
+    /* Initialize resource pool */
+    ResourcePool::Init();
+    
     pthread_create(&_pthread, NULL, threadProcHandler, this); // 创建执行线程，传递this指针
 }
 
@@ -70,11 +74,13 @@ void *Model::threadProcHandler(void *arg)
         model->saveConfig();
     }
 
-    /* 创建UI */
     pthread_mutex_lock(model->_mutex);
+
+    /* 创建UI */
     model->_view.create();
+    /* Initialize Appalication */
     model->installApplications(model->_sysConfig.appVector);
-    // 触发UI动画
+    /* 触发UI动画 */
     model->_view.appearAnimStart();
     pthread_mutex_unlock(model->_mutex);
 

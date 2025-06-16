@@ -3,6 +3,7 @@
 #include "../libs/lvgl/lvgl.h"
 #include "../utils/lv_ext/lv_obj_ext_func.h"
 #include "../utils/lv_ext/lv_anim_timeline_wrapper.h"
+#include "ResourcePool.h"
 #include <functional>
 
 namespace Page
@@ -25,6 +26,7 @@ namespace Page
         struct
         {
             lv_obj_t *cont;
+            lv_obj_t *image;
 
             struct
             {
