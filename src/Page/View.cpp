@@ -112,6 +112,7 @@ lv_obj_t *View::btnCreate(lv_obj_t *par, void *img_src, const char *name)
     lv_obj_set_size(obj, LV_HOR_RES / 4, LV_VER_RES / 4);
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_clip_corner(obj, true, LV_PART_MAIN);
     // lv_obj_set_style_bg_img_src(obj, img_src, 0);
 
     // 设置图片
