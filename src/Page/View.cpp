@@ -135,12 +135,12 @@ lv_obj_t *View::btnCreate(lv_obj_t *par, void *img_src, const char *name)
     lv_obj_remove_style_all(label);
     lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_label_set_text_fmt(label, "%s", name);
-    lv_obj_set_style_text_color(label, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(0x000000), LV_PART_MAIN);
 
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
     lv_obj_set_style_width(obj, LV_HOR_RES / 5, LV_STATE_PRESSED); // 设置button按下时的长宽
     lv_obj_set_style_height(obj, LV_VER_RES / 5, LV_STATE_PRESSED);
-    lv_obj_set_style_bg_color(obj, lv_color_hex(0x356b8c), 0);                 // 设置按钮默认的颜色
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xfccb90), LV_STATE_DEFAULT);  // 设置按钮默认的颜色
     lv_obj_set_style_bg_color(obj, lv_color_hex(0x242947), LV_STATE_PRESSED);  // 设置按钮在被按下时的颜色
     lv_obj_set_style_bg_color(obj, lv_color_hex(0xf2daaa), LV_STATE_FOCUSED);  // 设置按钮在被聚焦时的颜色
     lv_obj_set_style_bg_color(obj, lv_color_hex(0xa99991), LV_STATE_DISABLED); // 设置按钮在被聚焦时的颜色
