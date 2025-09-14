@@ -11,9 +11,13 @@ void View::create(void)
     lv_obj_remove_style_all(cont);
     lv_obj_set_size(cont, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_bg_color(cont, lv_color_hex(0xcccccc), 0);
-    lv_obj_set_style_bg_img_src(cont, "S:./picture/cover/main1.bin", 0);
+    lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(cont, lv_color_hex(0xa18cd1), LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(cont, lv_color_hex(0xfbc2eb), LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_dir(cont, LV_GRAD_DIR_HOR, LV_PART_MAIN); // 水平渐变
+    lv_obj_set_style_bg_main_stop(cont, 0, LV_PART_MAIN); // 渐变起点
+    lv_obj_set_style_bg_grad_stop(cont, 192, LV_PART_MAIN); // 渐变终点
+    // lv_obj_set_style_bg_img_src(cont, "S:./picture/cover/main1.bin", 0);
     lv_obj_align(cont, LV_ALIGN_CENTER, 0, 0);
     ui.cont = cont;
 
@@ -32,8 +36,12 @@ void View::create(void)
     lv_obj_remove_style_all(btnCont);
     lv_obj_set_size(btnCont, 400, LV_VER_RES / 2);
     // lv_obj_clear_flag(btnCont, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(btnCont, LV_OPA_80, 0);
-    lv_obj_set_style_bg_color(btnCont, lv_color_hex(0xcccccc), 0);
+    lv_obj_set_style_bg_opa(btnCont, LV_OPA_80, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(btnCont, lv_color_hex(0xa1c4fd), LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(btnCont, lv_color_hex(0x84fab0), LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_dir(btnCont, LV_GRAD_DIR_HOR, LV_PART_MAIN); // 水平渐变
+    lv_obj_set_style_bg_main_stop(btnCont, 0, LV_PART_MAIN); // 渐变起点
+    lv_obj_set_style_bg_grad_stop(btnCont, 192, LV_PART_MAIN); // 渐变终点
     lv_obj_align(btnCont, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_radius(btnCont, 16, LV_PART_MAIN);
     lv_obj_set_style_pad_column(btnCont, 30, LV_PART_MAIN);
