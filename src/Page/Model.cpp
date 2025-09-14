@@ -319,7 +319,7 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
         char **argv;
 
         sprintf(exec, "./%s", info.exec.c_str());
-        sprintf(icon, "S:./picture/icon/%s", info.icon.c_str());
+        sprintf(icon, "S:/mnt/UDISK/picture/icon/%s", info.icon.c_str());
 
         printf("[Model] icon: %s\n", icon);
 

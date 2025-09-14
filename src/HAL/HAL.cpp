@@ -22,9 +22,10 @@ void HAL::Init(void)
 {
     // LittlevGL init
     lv_init();
-    uint32_t rotated = LV_DISP_ROT_NONE;
-
+    lv_png_init();
+    
     // Linux frame buffer device init
+    uint32_t rotated = LV_DISP_ROT_NONE;
     sunxifb_init(rotated);
 
     // A buffer for LittlevGL to draw the screen's content
