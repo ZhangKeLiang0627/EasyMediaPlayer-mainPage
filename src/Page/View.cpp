@@ -62,7 +62,7 @@ void View::create(void)
         };
     lv_anim_timeline_add_wrapper(ui.anim_timeline, wrapper);
 
-    // appearAnimStart();
+    appearAnimStart();
 }
 
 void View::release()

@@ -45,7 +45,10 @@ Model::Model(std::function<void(void)> exitCb, pthread_mutex_t &mutex)
 
     /* Initialize resource pool */
     ResourcePool::Init();
-    
+
+    /* 创建UI */
+    _view.create();
+
     pthread_create(&_pthread, NULL, threadProcHandler, this); // 创建执行线程，传递this指针
 }
 
@@ -74,22 +77,17 @@ void *Model::threadProcHandler(void *arg)
         model->saveConfig();
     }
 
-    pthread_mutex_lock(model->_mutex);
-
-    /* 创建UI */
-    model->_view.create();
     /* Initialize Appalication */
+    pthread_mutex_lock(model->_mutex);
     model->installApplications(model->_sysConfig.appVector);
-    /* 触发UI动画 */
-    model->_view.appearAnimStart();
     pthread_mutex_unlock(model->_mutex);
 
     while (!model->_threadExitFlag)
     {
 
-        pthread_mutex_lock(model->_mutex);
-        // ...
-        pthread_mutex_unlock(model->_mutex);
+        // pthread_mutex_lock(model->_mutex);
+        // // ...
+        // pthread_mutex_unlock(model->_mutex);
 
         usleep(50000);
     }
@@ -251,7 +249,13 @@ void Model::runApplication(const char *exec, char *const argv[])
     }
 
     wait(nullptr);           // 阻塞等待子进程返回
-    _view.appearAnimStart(); // 触发UI动画
+    printf("[View] return to mainPage!\n");
+    
+    // lv_async_call([](void *data){
+    //     Model *model = (Model *)data;
+    //     model->_view.appearAnimStart(false);}, this);
+
+    _view.appearAnimStart(false); // 触发UI动画
 }
 
 /**
@@ -319,7 +323,7 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
         char **argv;
 
         sprintf(exec, "./%s", info.exec.c_str());
-        sprintf(icon, "S:/mnt/UDISK/picture/icon/%s", info.icon.c_str());
+        sprintf(icon, "S:./picture/icon/%s", info.icon.c_str());
 
         printf("[Model] icon: %s\n", icon);
 
