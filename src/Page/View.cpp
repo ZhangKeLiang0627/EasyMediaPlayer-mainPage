@@ -25,7 +25,6 @@ void View::create(void)
     lv_obj_set_style_bg_img_src(img, ResourcePool::GetImage("lawyer_close"), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_src(img, ResourcePool::GetImage("lawyer_open"), LV_STATE_PRESSED);
     lv_obj_align_to(img, cont, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-
     ui.image = img;
 
     // 按钮画布的创建
@@ -128,6 +127,7 @@ lv_obj_t *View::btnCreate(lv_obj_t *par, void *img_src, const char *name)
     lv_obj_remove_style_all(label);
     lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_label_set_text_fmt(label, "%s", name);
+    lv_obj_set_style_text_color(label, lv_color_hex(0xffffff), LV_PART_MAIN);
 
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
     lv_obj_set_style_width(obj, LV_HOR_RES / 5, LV_STATE_PRESSED); // 设置button按下时的长宽
