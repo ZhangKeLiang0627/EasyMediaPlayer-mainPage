@@ -317,7 +317,7 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
         int iconLen = info.icon.length();
 
         char *exec = new char[execLen + 3];
-        char *icon = new char[iconLen + 14];
+        char *icon = new char[iconLen + 64];
 
         const char *name = info.name.c_str();
         char **argv;
