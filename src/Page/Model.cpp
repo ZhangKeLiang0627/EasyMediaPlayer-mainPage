@@ -110,7 +110,7 @@ bool Model::readConfig(void)
         _sysConfig.brightness = 50; // 缺省值
         _sysConfig.volume = 50;
 
-        AppInfo info = {.name = "eMP_mainPage", .exec = "eMP_mainPage", .argv = "<null>", .icon = "eMP_mainPage.bin", .config = ""};
+        AppInfo info = {.name = "nullAPPHere", .exec = "<null>", .argv = "<null>", .icon = "null.bin", .config = ""};
         _sysConfig.appVector.push_back(info);
 
         printf("[Sys] Open \"./config/sysconfig.json\" failed! Please check!\n");
