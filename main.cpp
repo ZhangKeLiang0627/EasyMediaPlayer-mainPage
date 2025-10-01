@@ -10,7 +10,10 @@ void *threadLvglHandler(void *);
 
 int main(int argc, char *argv[])
 {
-    printf("[Sys] eMP_mainPage begin!\n");
+    // log init
+    // logger_init("/mnt/UDISK/logs/", "eMP.log", false, 1024 * 1024 * 1, 10);
+
+    log_info("[Sys] eMP_mainPage begin!");
 
     // Init HAL
     HAL::Init();
