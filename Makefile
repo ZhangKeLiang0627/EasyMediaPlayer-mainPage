@@ -37,7 +37,7 @@ ifeq ($(CROSS), 1)
     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include/allwinner/include 
     CFLAGS += -I$(PROJECT_DIR)/include
     CFLAGS += -I$(PROJECT_DIR)/utils
-#     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/compile_dir/target/freetype-2.13.2/include
+    CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/compile_dir/target/freetype-2.13.2/include
     CFLAGS += -I$(PROJECT_DIR)/libs/spdlog/include
 
     # 架构相关参数
@@ -93,7 +93,7 @@ else
     CFLAGS += -I$(PROJECT_DIR)/include
     CFLAGS += -I$(PROJECT_DIR)/utils
     CFLAGS += -I$(PROJECT_DIR)/libs/spdlog/include
-#     CFLAGS += -I/usr/include/freetype2
+    CFLAGS += -I/usr/include/freetype2
     CFLAGS += $(shell pkg-config --cflags sdl2)
 
     # 链接选项

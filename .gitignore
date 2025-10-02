@@ -1,5 +1,8 @@
 .vscode/settings.json
 
+picture
+
 *.o
 
 eMP_mainPage
+eMP_documents
