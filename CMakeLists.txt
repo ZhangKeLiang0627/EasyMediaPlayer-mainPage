@@ -32,6 +32,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/libs
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/cpp-httplib/
 )
 
 # 检查本地/交叉编译 

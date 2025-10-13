@@ -1,8 +1,9 @@
 #include "Model.h"
 #include <sys/wait.h>
+#include <fstream>
+#include "httplib.h"
 #include "../utils/cJSON/cJSON.h"
 #include "ResourcePool.h"
-#include <fstream>
 
 static const char *configNumberItemName[] =
     {
@@ -67,8 +68,11 @@ Model::~Model()
 void *Model::threadProcHandler(void *arg)
 {
     Model *model = static_cast<Model *>(arg); // 将arg转换为Model指针
+    httplib::Server svr;
+    svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
+            { res.set_content("Hello World!", "text/plain"); });
     usleep(50000);
-
+    
     /* 读取数据 */
     // 读取配置文件
     if (model->readConfig() != true)
@@ -84,7 +88,7 @@ void *Model::threadProcHandler(void *arg)
 
     while (!model->_threadExitFlag)
     {
-
+        svr.listen("0.0.0.0", 6210);
         // pthread_mutex_lock(model->_mutex);
         // // ...
         // pthread_mutex_unlock(model->_mutex);
