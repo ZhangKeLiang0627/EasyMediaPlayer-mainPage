@@ -4,5 +4,7 @@ picture
 
 *.o
 
+build
+
 eMP_mainPage
 eMP_documents
