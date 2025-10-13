@@ -1,4 +1,4 @@
-#include "../include/common_inc.h"
+#include "../inc/common_inc.h"
 #include "Model.h"
 
 pthread_mutex_t lv_mutex;

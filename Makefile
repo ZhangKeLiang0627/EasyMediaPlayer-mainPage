@@ -35,7 +35,7 @@ ifeq ($(CROSS), 1)
     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include
     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include/allwinner
     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include/allwinner/include 
-    CFLAGS += -I$(PROJECT_DIR)/include
+    CFLAGS += -I$(PROJECT_DIR)/inc
     CFLAGS += -I$(PROJECT_DIR)/utils
     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/compile_dir/target/freetype-2.13.2/include
     CFLAGS += -I$(PROJECT_DIR)/libs/spdlog/include
@@ -90,7 +90,7 @@ else
     CXXFLAGS ?= $(CFLAGS) -std=c++11
 
     # 头文件路径
-    CFLAGS += -I$(PROJECT_DIR)/include
+    CFLAGS += -I$(PROJECT_DIR)/inc
     CFLAGS += -I$(PROJECT_DIR)/utils
     CFLAGS += -I$(PROJECT_DIR)/libs/spdlog/include
     CFLAGS += -I/usr/include/freetype2
