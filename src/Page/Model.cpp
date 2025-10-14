@@ -71,6 +71,9 @@ void *Model::threadProcHandler(void *arg)
     httplib::Server svr;
     svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
             { res.set_content("Hello World!", "text/plain"); });
+    svr.set_logger([](const httplib::Request& req, const httplib::Response& res) 
+    { log_debug("%s %s -> %d", req.method.c_str(), req.path.c_str(), res.status); });
+    
     usleep(50000);
     
     /* 读取数据 */

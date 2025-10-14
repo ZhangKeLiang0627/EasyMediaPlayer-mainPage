@@ -27,6 +27,7 @@ namespace Page
         {
             lv_obj_t *cont;
             lv_obj_t *image;
+            lv_obj_t *dropdown;
 
             struct
             {
@@ -47,7 +48,9 @@ namespace Page
 
     private:
         static void onEvent(lv_event_t *event);
+
         static void applicationEventHandler(lv_event_t *event);
+        static void dropdownEventHandler(lv_event_t * e);
 
         lv_obj_t *roundRectCreate(lv_obj_t *par, lv_coord_t x_ofs, lv_coord_t y_ofs);
         lv_obj_t *btnCreate(lv_obj_t *par, void *img_src, const char *name);

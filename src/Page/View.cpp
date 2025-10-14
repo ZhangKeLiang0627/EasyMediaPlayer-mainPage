@@ -1,5 +1,6 @@
 #include "View.h"
-
+#include "../utils/lv_100ask_screenshot/lv_100ask_screenshot.h"
+#include "../utils/log/log.h"
 using namespace Page;
 
 // LV_IMG_DECLARE(img_src_bootlogo);
@@ -50,6 +51,12 @@ void View::create(void)
     lv_obj_set_scroll_dir(btnCont, LV_DIR_HOR);               // 设置画布滚动方向：横向滚动
     lv_obj_set_scroll_snap_x(btnCont, LV_SCROLL_SNAP_CENTER); // 设置在垂直滚动结束时捕捉子元素的位置：人话：打开菜单第一个item的位置，现在是居中
     ui.btnCont.cont = btnCont;
+
+    lv_obj_t * dd = lv_dropdown_create(cont);
+    lv_dropdown_set_options(dd, "bmp\npng\njpg");
+    lv_obj_align(dd, LV_ALIGN_TOP_RIGHT, -10, 10);
+    lv_obj_add_event_cb(dd, dropdownEventHandler, LV_EVENT_VALUE_CHANGED, this);
+    ui.dropdown = dd;
 
     // 动画的创建
     ui.anim_timeline = lv_anim_timeline_create();
@@ -231,5 +238,54 @@ void View::applicationEventHandler(lv_event_t *event)
                 lv_obj_invalidate(lv_scr_act());         // 重绘屏幕
             }
         }
+    }
+}
+
+#include <time.h>
+void View::dropdownEventHandler(lv_event_t * event)
+{
+    View *instance = (View *)lv_event_get_user_data(event);
+    LV_ASSERT_NULL(instance);
+
+    lv_event_code_t code = lv_event_get_code(event);
+    lv_obj_t *obj = lv_event_get_current_target(event);
+
+    log_debug("[View] screenshot!");
+
+    if(code == LV_EVENT_VALUE_CHANGED) 
+    {
+        char dropdown_selected_str_buf[16];
+        char file_name_buf[128];
+        time_t timep;
+        struct tm *p;
+        char time_buffer [64];
+
+        lv_dropdown_get_selected_str(obj, dropdown_selected_str_buf, sizeof(dropdown_selected_str_buf));
+
+        time(&timep);
+        p = gmtime(&timep);
+        strftime (time_buffer, sizeof(time_buffer),"lv_100ask_screenshot-%Y%m%d-%H%M%S",p);
+
+        lv_snprintf(file_name_buf, sizeof(file_name_buf), "%s%s.%s", "/mnt/UDISK/picture/", time_buffer, dropdown_selected_str_buf);
+
+        log_debug("[View] New screenshot name: %s", file_name_buf);
+
+        bool result = false;
+
+        if(strcmp(dropdown_selected_str_buf, "bmp") == 0)
+            result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_BMP, file_name_buf);
+        else if(strcmp(dropdown_selected_str_buf, "png") == 0)
+            result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_PNG, file_name_buf);
+        else if(strcmp(dropdown_selected_str_buf, "jpg") == 0)
+            result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_JPEG, file_name_buf);
+        else 
+        {
+            log_debug("[View] did not success!");
+            return;
+        }
+
+        log_debug("[View] shot result is %d!", result);
+
+
     }
 }
