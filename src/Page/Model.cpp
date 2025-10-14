@@ -311,6 +311,28 @@ char **Model::stringToArgv(const char *exec, std::string &str)
     return argv;
 }
 
+std::string Model::getExeDirectory(void) 
+{
+    const size_t bufSize = 1024;
+    char exePath[bufSize] = {0};
+
+    const ssize_t len = readlink("/proc/self/exe", exePath, bufSize - 1);
+    if (len == -1) 
+    {
+        throw std::runtime_error("Failed to read executable path");
+    }
+    exePath[len] = '\0';
+
+    char* lastSlash = std::strrchr(exePath, '/');
+    if (!lastSlash) 
+    {
+        throw std::runtime_error("Invalid executable path format");
+    }
+    *lastSlash = '\0';
+
+    return std::string(exePath) + '/';
+}
+
 /**
  * @brief 安装应用程序
  * @param apps 应用程序表
@@ -324,21 +346,154 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
         int iconLen = info.icon.length();
 
         char *exec = new char[execLen + 3];
-        char *icon = new char[iconLen + 64];
+        char *icon = new char[iconLen + 256];
 
         const char *name = info.name.c_str();
         char **argv;
 
         sprintf(exec, "./%s", info.exec.c_str());
-        sprintf(icon, "S:./picture/icon/%s", info.icon.c_str());
-
+        sprintf(icon, "%spicture/icon/%s", getExeDirectory().c_str(), info.icon.c_str());
         printf("[Model] icon: %s\n", icon);
 
         argv = stringToArgv(exec, info.argv);
+
         // 添加应用程序到UI
         _view.addApplication((name), exec, argv, icon);
 
         delete[] icon;
         delete[] exec;
     }
+}
+
+
+
+#include "../libs/lvgl/src/extra/libs/png/lodepng.h"
+#include "../utils/lv_100ask_screenshot/save_as_png.h"
+
+#include <stdio.h>      // 错误打印（perror）、标准输入输出
+#include <stdlib.h>     // 内存分配/释放（malloc/free）
+#include <fcntl.h>      // 文件打开模式（O_RDONLY）
+#include <sys/mman.h>   // 内存映射（mmap/munmap）
+#include <sys/ioctl.h>  // IO控制（ioctl）
+#include <linux/fb.h>   // 帧缓冲结构体（struct fb_var_screeninfo）
+#include <unistd.h>     // 延时（usleep）、关闭文件（close）
+#include <stdint.h>     // 固定宽度整数类型（uint8_t/uint32_t）
+// @brief 对当前LVGL屏幕进行截图，并将截图保存到指定文件
+// @param filename 保存截图的文件路径
+// @return 操作成功返回0，失败返回-1
+int Model::screenshot(const char *filename) 
+{
+	int fb_fd = open("/dev/fb0", O_RDONLY);
+	if (fb_fd < 0) { 
+		perror("打开帧缓冲失败"); 
+		return -1; 
+	}
+    struct fb_var_screeninfo vinfo;
+    ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo);
+    int width = vinfo.xres;         // 屏幕宽度
+    int height = vinfo.yres;        // 屏幕高度
+    int bpp = vinfo.bits_per_pixel; // 每像素位数（如16/24/32）
+    int line_length = vinfo.xres_virtual * (bpp / 8); // 行字节数
+    size_t buffer_size = line_length * height;       // 总缓冲区大小
+	
+    // 映射帧缓冲到用户空间
+    uint8_t *fb_mem = (uint8_t *)mmap(NULL, buffer_size, PROT_READ, MAP_SHARED, fb_fd, 0);
+    if (fb_mem == MAP_FAILED) {
+        perror("帧缓冲映射失败");
+        close(fb_fd);
+        return -1;
+    }
+
+    unsigned int screensize = buffer_size; // 声明screensize变量
+
+    // 增强型垂直同步与帧稳定机制
+    int vsync = 0;
+    int retries = 3;
+    bool vsync_supported = (ioctl(fb_fd, FBIO_WAITFORVSYNC, &vsync) >= 0);
+
+    uint8_t *frame_snapshot = NULL; // 声明帧快照指针
+    if (vsync_supported) {
+        // 成功获取VSYNC，确保在帧开始时读取
+        ioctl(fb_fd, FBIO_WAITFORVSYNC, &vsync);
+        
+        // 捕获完整帧缓冲快照
+        frame_snapshot = (uint8_t *)malloc(screensize);
+        if (!frame_snapshot) {
+            perror("快照内存分配失败");
+            munmap(fb_mem, screensize);
+            close(fb_fd);
+            return -1;
+        }
+        memcpy(frame_snapshot, fb_mem, screensize);
+    } else {
+        // VSYNC不受支持，增强型多帧验证机制
+        const size_t CHECK_SIZE = 4096; // 扩大比较区域至4KB
+        const int STABLE_FRAMES_REQUIRED = 2; // 需要连续2帧稳定
+        int stable_count = 0;
+        uint8_t *prev_frame = (uint8_t *)malloc(CHECK_SIZE);
+        uint8_t *curr_frame = (uint8_t *)malloc(CHECK_SIZE);
+
+        // 初始读取基准帧
+        memcpy(prev_frame, fb_mem, CHECK_SIZE);
+
+        for (int i = 0; i < retries * 2; i++) {
+            usleep(8000); // 缩短基础延迟，增加采样密度
+            memcpy(curr_frame, fb_mem, CHECK_SIZE);
+
+            // 比较当前帧与前一帧
+            if (memcmp(prev_frame, curr_frame, CHECK_SIZE) == 0) {
+                stable_count++;
+                if (stable_count >= STABLE_FRAMES_REQUIRED) break;
+            } else {
+                stable_count = 0; // 出现变化则重置稳定计数器
+            }
+            memcpy(prev_frame, curr_frame, CHECK_SIZE); // 更新基准帧
+        }
+
+        free(prev_frame);
+        free(curr_frame);
+
+        // 最终稳定性保障
+        if (stable_count < STABLE_FRAMES_REQUIRED) {
+            usleep(40000); // 最后尝试延长等待40ms
+        }
+
+        // 捕获完整帧缓冲快照，确保数据一致性
+        frame_snapshot = (uint8_t *)malloc(screensize);
+        if (!frame_snapshot) {
+            perror("快照内存分配失败");
+            munmap(fb_mem, screensize);
+            close(fb_fd);
+            return -1;
+        }
+        memcpy(frame_snapshot, fb_mem, screensize);
+    }
+    // 分配目标RGB24缓冲区
+    uint8_t *rgb24_buf = (uint8_t *)malloc(width * height * 3);
+    if (!rgb24_buf) { perror("内存分配失败"); munmap(fb_mem, buffer_size); close(fb_fd); return -1; }
+	
+    // 使用静态快照进行像素格式转换（RGB565→RGB888）
+    uint32_t *src_ptr = (uint32_t *)frame_snapshot;
+    uint8_t *dst_ptr = rgb24_buf;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            uint32_t pixel = src_ptr[y * (line_length / 4) + x]; // 使用实际宽度计算索引，修复越界访问
+            // RGB565转RGB888
+            *dst_ptr++ = (pixel >> 16) & 0xFF; // R (从RGBA8888中提取红色通道)
+            *dst_ptr++ = (pixel >> 8) & 0xFF;  // G (从RGBA8888中提取绿色通道)
+            *dst_ptr++ = pixel & 0xFF;         // B (从RGBA8888中提取蓝色通道)
+        }
+    }
+    // 释放静态快照内存
+    free(frame_snapshot);
+    frame_snapshot = NULL;
+
+    // 保存为PNG文件
+    save_as_png_file(rgb24_buf, width, height, 32, filename);
+	// lodepng_encode24_file(filename, (uint8_t*)rgb24_buf, width, height); // 使用24位编码匹配RGB24格式
+    // 释放资源
+    free(rgb24_buf);
+    munmap(fb_mem, buffer_size);
+    close(fb_fd);
+    return 0;
 }

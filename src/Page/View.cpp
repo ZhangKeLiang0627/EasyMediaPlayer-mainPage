@@ -1,4 +1,5 @@
 #include "View.h"
+#include "Model.h"
 #include "../utils/lv_100ask_screenshot/lv_100ask_screenshot.h"
 #include "../utils/log/log.h"
 using namespace Page;
@@ -241,6 +242,12 @@ void View::applicationEventHandler(lv_event_t *event)
     }
 }
 
+
+
+
+
+
+
 #include <time.h>
 void View::dropdownEventHandler(lv_event_t * event)
 {
@@ -266,18 +273,25 @@ void View::dropdownEventHandler(lv_event_t * event)
         p = gmtime(&timep);
         strftime (time_buffer, sizeof(time_buffer),"lv_100ask_screenshot-%Y%m%d-%H%M%S",p);
 
-        lv_snprintf(file_name_buf, sizeof(file_name_buf), "%s%s.%s", "/mnt/UDISK/picture/", time_buffer, dropdown_selected_str_buf);
+        lv_snprintf(file_name_buf, sizeof(file_name_buf), "%s%s.%s", Model::getExeDirectory().c_str(), time_buffer, dropdown_selected_str_buf);
 
         log_debug("[View] New screenshot name: %s", file_name_buf);
 
         bool result = false;
 
         if(strcmp(dropdown_selected_str_buf, "bmp") == 0)
+        {
             result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_BMP, file_name_buf);
+        }
         else if(strcmp(dropdown_selected_str_buf, "png") == 0)
+        {
             result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_PNG, file_name_buf);
+            // Model::screenshot(file_name_buf);
+        }
         else if(strcmp(dropdown_selected_str_buf, "jpg") == 0)
+        {
             result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_JPEG, file_name_buf);
+        }
         else 
         {
             log_debug("[View] did not success!");
