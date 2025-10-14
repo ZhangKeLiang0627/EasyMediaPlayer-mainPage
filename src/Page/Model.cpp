@@ -321,21 +321,43 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
         int iconLen = info.icon.length();
 
         char *exec = new char[execLen + 3];
-        char *icon = new char[iconLen + 64];
+        char *icon = new char[iconLen + 256];
 
         const char *name = info.name.c_str();
         char **argv;
 
         sprintf(exec, "./%s", info.exec.c_str());
-        sprintf(icon, "S:./picture/icon/%s", info.icon.c_str());
-
+        sprintf(icon, "%spicture/icon/%s", getExeDirectory().c_str(), info.icon.c_str());
         printf("[Model] icon: %s\n", icon);
 
         argv = stringToArgv(exec, info.argv);
+
         // 添加应用程序到UI
         _view.addApplication((name), exec, argv, icon);
 
         delete[] icon;
         delete[] exec;
     }
+}
+
+std::string Model::getExeDirectory(void) 
+{
+    const size_t bufSize = 1024;
+    char exePath[bufSize] = {0};
+
+    const ssize_t len = readlink("/proc/self/exe", exePath, bufSize - 1);
+    if (len == -1) 
+    {
+        throw std::runtime_error("Failed to read executable path");
+    }
+    exePath[len] = '\0';
+
+    char* lastSlash = std::strrchr(exePath, '/');
+    if (!lastSlash) 
+    {
+        throw std::runtime_error("Invalid executable path format");
+    }
+    *lastSlash = '\0';
+
+    return std::string(exePath) + '/';
 }

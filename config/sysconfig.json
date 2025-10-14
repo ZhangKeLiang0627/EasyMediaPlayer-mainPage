@@ -35,7 +35,14 @@
       "exec": "eMP_documents",
       "argv": "<null>",
       "icon": "doge.png",
-      "config": "App4.json"
+      "config": "eMP_documents.json"
+    },
+    {
+      "name": "Serial",
+      "exec": "eMP_serial",
+      "argv": "<null>",
+      "icon": "doge.png",
+      "config": "eMP_serial.json"
     },
     {
       "name": "About",
