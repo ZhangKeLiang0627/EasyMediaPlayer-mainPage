@@ -53,7 +53,6 @@ namespace Page
 
         // 获取当前可执行文件所在路径
         static std::string getExeDirectory(void); 
-        static int screenshot(const char *filename); 
 
     };
 }

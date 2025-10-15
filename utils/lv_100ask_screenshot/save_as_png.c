@@ -39,11 +39,11 @@ bool save_as_png_file(const uint8_t * image, uint32_t w, uint32_t h, uint32_t bp
 {
     if(bpp == 32)
     {
-      lodepng_encode32_file(filename, image, w, h);
+      return lodepng_encode32_file(filename, image, w, h);
     }
     else if(bpp == 24)
     {
-      lodepng_encode24_file(filename, image, w, h);
+      return lodepng_encode24_file(filename, image, w, h);
     }
 }
 

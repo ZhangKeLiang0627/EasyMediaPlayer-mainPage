@@ -17,8 +17,8 @@ void View::create(void)
     lv_obj_set_style_bg_color(cont, lv_color_hex(0xa18cd1), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_color(cont, lv_color_hex(0xfbc2eb), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_dir(cont, LV_GRAD_DIR_HOR, LV_PART_MAIN); // 水平渐变
-    lv_obj_set_style_bg_main_stop(cont, 0, LV_PART_MAIN); // 渐变起点
-    lv_obj_set_style_bg_grad_stop(cont, 192, LV_PART_MAIN); // 渐变终点
+    lv_obj_set_style_bg_main_stop(cont, 0, LV_PART_MAIN);              // 渐变起点
+    lv_obj_set_style_bg_grad_stop(cont, 192, LV_PART_MAIN);            // 渐变终点
     // lv_obj_set_style_bg_img_src(cont, "S:./picture/cover/main1.bin", 0);
     lv_obj_align(cont, LV_ALIGN_CENTER, 0, 0);
     ui.cont = cont;
@@ -42,8 +42,8 @@ void View::create(void)
     lv_obj_set_style_bg_color(btnCont, lv_color_hex(0xa1c4fd), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_color(btnCont, lv_color_hex(0x84fab0), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_dir(btnCont, LV_GRAD_DIR_HOR, LV_PART_MAIN); // 水平渐变
-    lv_obj_set_style_bg_main_stop(btnCont, 0, LV_PART_MAIN); // 渐变起点
-    lv_obj_set_style_bg_grad_stop(btnCont, 192, LV_PART_MAIN); // 渐变终点
+    lv_obj_set_style_bg_main_stop(btnCont, 0, LV_PART_MAIN);              // 渐变起点
+    lv_obj_set_style_bg_grad_stop(btnCont, 192, LV_PART_MAIN);            // 渐变终点
     lv_obj_align(btnCont, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_radius(btnCont, 16, LV_PART_MAIN);
     lv_obj_set_style_pad_column(btnCont, 30, LV_PART_MAIN);
@@ -53,7 +53,7 @@ void View::create(void)
     lv_obj_set_scroll_snap_x(btnCont, LV_SCROLL_SNAP_CENTER); // 设置在垂直滚动结束时捕捉子元素的位置：人话：打开菜单第一个item的位置，现在是居中
     ui.btnCont.cont = btnCont;
 
-    lv_obj_t * dd = lv_dropdown_create(cont);
+    lv_obj_t *dd = lv_dropdown_create(cont);
     lv_dropdown_set_options(dd, "bmp\npng\njpg");
     lv_obj_align(dd, LV_ALIGN_TOP_RIGHT, -10, 10);
     lv_obj_add_event_cb(dd, dropdownEventHandler, LV_EVENT_VALUE_CHANGED, this);
@@ -78,6 +78,13 @@ void View::create(void)
     lv_anim_timeline_add_wrapper(ui.anim_timeline, wrapper);
 
     appearAnimStart();
+
+    // test
+    lv_obj_t *snapshot = lv_img_create(cont);
+    lv_obj_set_size(snapshot, 450, 450);
+    lv_obj_align(snapshot, LV_ALIGN_CENTER, 0, 0);
+    // lv_obj_add_flag(snapshot, LV_OBJ_FLAG_CLICKABLE);
+    ui.snapshot = snapshot;
 }
 
 void View::release()
@@ -242,14 +249,34 @@ void View::applicationEventHandler(lv_event_t *event)
     }
 }
 
+#include "../../libs/lvgl/src/extra/libs/png/lodepng.h"
+#include "../../utils/lv_100ask_screenshot/save_as_png.h"
 
+static void update_snapshot(lv_obj_t *obj, lv_obj_t *img_snapshot)
+{
+    lv_img_dsc_t *snapshot = (lv_img_dsc_t *)lv_img_get_src(img_snapshot);
 
+    if (snapshot)
+    {
+        log_debug("snapshot has data, and kill it!");
+        lv_img_set_src(img_snapshot, NULL);
+        lv_img_cache_invalidate_src((const void *)snapshot);
+        lv_snapshot_free(snapshot);
+    }
 
+    snapshot = lv_snapshot_take(obj, LV_IMG_CF_TRUE_COLOR_ALPHA);
 
+    lv_img_set_src(img_snapshot, snapshot);
 
+    // save_as_png_file(snapshot->data, snapshot->header.w, snapshot->header.h, 32, (Model::getExeDirectory() + "screenshot.png").c_str());
+
+    // lodepng_encode32_file((Model::getExeDirectory() + "screenshot.png").c_str(), snapshot->data, snapshot->header.w, snapshot->header.h);
+
+    log_debug("screenshot path: %s", (Model::getExeDirectory() + "screenshot.png").c_str());
+}
 
 #include <time.h>
-void View::dropdownEventHandler(lv_event_t * event)
+void View::dropdownEventHandler(lv_event_t *event)
 {
     View *instance = (View *)lv_event_get_user_data(event);
     LV_ASSERT_NULL(instance);
@@ -259,47 +286,48 @@ void View::dropdownEventHandler(lv_event_t * event)
 
     log_debug("[View] screenshot!");
 
-    if(code == LV_EVENT_VALUE_CHANGED) 
+    if (code == LV_EVENT_VALUE_CHANGED)
     {
-        char dropdown_selected_str_buf[16];
-        char file_name_buf[128];
-        time_t timep;
-        struct tm *p;
-        char time_buffer [64];
 
-        lv_dropdown_get_selected_str(obj, dropdown_selected_str_buf, sizeof(dropdown_selected_str_buf));
+        update_snapshot(lv_scr_act(), instance->ui.snapshot);
 
-        time(&timep);
-        p = gmtime(&timep);
-        strftime (time_buffer, sizeof(time_buffer),"lv_100ask_screenshot-%Y%m%d-%H%M%S",p);
+        // char dropdown_selected_str_buf[16];
+        // char file_name_buf[128];
+        // time_t timep;
+        // struct tm *p;
+        // char time_buffer [64];
 
-        lv_snprintf(file_name_buf, sizeof(file_name_buf), "%s%s.%s", Model::getExeDirectory().c_str(), time_buffer, dropdown_selected_str_buf);
+        // lv_dropdown_get_selected_str(obj, dropdown_selected_str_buf, sizeof(dropdown_selected_str_buf));
 
-        log_debug("[View] New screenshot name: %s", file_name_buf);
+        // time(&timep);
+        // p = gmtime(&timep);
+        // strftime (time_buffer, sizeof(time_buffer),"screenshot-%Y%m%d-%H%M%S",p);
 
-        bool result = false;
+        // lv_snprintf(file_name_buf, sizeof(file_name_buf), "%s%s.%s", Model::getExeDirectory().c_str(), time_buffer, dropdown_selected_str_buf);
 
-        if(strcmp(dropdown_selected_str_buf, "bmp") == 0)
-        {
-            result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_BMP, file_name_buf);
-        }
-        else if(strcmp(dropdown_selected_str_buf, "png") == 0)
-        {
-            result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_PNG, file_name_buf);
-            // Model::screenshot(file_name_buf);
-        }
-        else if(strcmp(dropdown_selected_str_buf, "jpg") == 0)
-        {
-            result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_JPEG, file_name_buf);
-        }
-        else 
-        {
-            log_debug("[View] did not success!");
-            return;
-        }
+        // log_debug("[View] New screenshot name: %s", file_name_buf);
 
-        log_debug("[View] shot result is %d!", result);
+        // bool result = false;
 
+        // if(strcmp(dropdown_selected_str_buf, "bmp") == 0)
+        // {
+        // result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_BMP, file_name_buf);
+        // }
+        // else if(strcmp(dropdown_selected_str_buf, "png") == 0)
+        // {
+        //     result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_PNG, file_name_buf);
+        //     // Model::screenshot(file_name_buf);
+        // }
+        // else if(strcmp(dropdown_selected_str_buf, "jpg") == 0)
+        // {
+            // result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_JPEG, file_name_buf);
+        // }
+        // else
+        // {
+        //     log_debug("[View] did not success!");
+        //     return;
+        // }
 
+        // log_debug("[View] shot result is %d!", result);
     }
 }
