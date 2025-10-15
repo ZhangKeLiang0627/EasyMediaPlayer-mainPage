@@ -25,6 +25,153 @@ static const char *appInfoItemName[] =
 
 using namespace Page;
 
+const char *html = R"(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件上传表单</title>
+    <style>
+        /* 基础样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* 渐变背景动画 */
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(45deg, #4158D0, #C850C0, #FFCC70);
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+            padding: 20px;
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 表单容器样式 */
+        .form-container {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        /* 表单标题 */
+        .form-title {
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-size: 1.8rem;
+        }
+
+        /* 文件输入容器 */
+        .file-input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        /* 输入框标签 */
+        .input-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        /* 文件选择框样式 */
+        .file-input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            transition: border-color 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .file-input:focus {
+            outline: none;
+            border-color: #6a5acd;
+        }
+
+        /* 提交按钮样式 */
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background-color: #6a5acd;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .submit-btn:hover {
+            background-color: #554a99;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 600px) {
+            .form-container {
+                padding: 1.5rem;
+            }
+            
+            .form-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2 class="form-title">文件上传</h2>
+        <form id="formElem">
+            <div class="file-input-group">
+                <label class="input-label" for="image_file">图片文件 (仅支持图片格式)</label>
+                <input type="file" id="image_file" name="image_file" accept="image/*" class="file-input">
+            </div>
+            
+            <div class="file-input-group">
+                <label class="input-label" for="text_file">文本文件 (仅支持文本格式)</label>
+                <input type="file" id="text_file" name="text_file" accept="text/*" class="file-input">
+            </div>
+            
+            <input type="submit" value="上传文件" class="submit-btn">
+        </form>
+    </div>
+
+    <script>
+        formElem.onsubmit = async (e) => {
+            e.preventDefault();
+            let res = await fetch('/post', {
+                method: 'POST',
+                body: new FormData(formElem)
+            });
+            console.log(await res.text());
+            // 可以添加上传成功的提示
+            alert('文件上传成功！请查看控制台输出');
+        };
+    </script>
+</body>
+</html>
+)";
+
 /**
  * @brief Model构造函数
  *
@@ -68,11 +215,55 @@ Model::~Model()
 void *Model::threadProcHandler(void *arg)
 {
     Model *model = static_cast<Model *>(arg); // 将arg转换为Model指针
-    httplib::Server svr;
+
+    httplib::Server svr; // 初始化http服务器
+
+    svr.set_logger([](const httplib::Request &req, const httplib::Response &res)
+                   { log_debug("%s %s -> %d", req.method.c_str(), req.path.c_str(), res.status); });
+
+    svr.set_error_handler([](const httplib::Request & /*req*/, httplib::Response &res)
+                          {
+    const char *fmt = "<p>Error Status: <span style='color:red;'>%d</span></p>";
+    char buf[BUFSIZ];
+    snprintf(buf, sizeof(buf), fmt, res.status);
+    res.set_content(buf, "text/html"); });
+
+    svr.Get("/", [](const httplib::Request &, httplib::Response &res)
+            { res.set_content(html, "text/html"); });
+
+    svr.Get(R"(/numbers/(\d+))", [&](const httplib::Request &req, httplib::Response &res)
+            {
+    auto numbers = req.matches[1];
+    res.set_content(numbers, "text/plain"); });
+
     svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
             { res.set_content("Hello World!", "text/plain"); });
+
+    svr.Post("/post", [](const httplib::Request &req, httplib::Response &res)
+             {
+    const auto &image_file = req.form.get_file("image_file");
+    const auto &text_file = req.form.get_file("text_file");
+
+    std::cout << "image file length: " << image_file.content.length() << std::endl
+         << "image file name: " << image_file.filename << std::endl
+         << "text file length: " << text_file.content.length() << std::endl
+         << "text file name: " << text_file.filename << std::endl;
+
+    {
+      std::ofstream ofs(image_file.filename, std::ios::binary);
+      ofs << image_file.content;
+    }
+
+    {
+      std::ofstream ofs(text_file.filename);
+      ofs << text_file.content;
+      log_debug("[Svr] content: %s", text_file.content.c_str());
+    }
+
+    res.set_content("done", "text/plain"); });
+
     usleep(50000);
-    
+
     /* 读取数据 */
     // 读取配置文件
     if (model->readConfig() != true)
@@ -252,9 +443,9 @@ void Model::runApplication(const char *exec, char *const argv[])
         }
     }
 
-    wait(nullptr);           // 阻塞等待子进程返回
+    wait(nullptr); // 阻塞等待子进程返回
     printf("[View] return to mainPage!\n");
-    
+
     // lv_async_call([](void *data){
     //     Model *model = (Model *)data;
     //     model->_view.appearAnimStart(false);}, this);
@@ -340,20 +531,20 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
     }
 }
 
-std::string Model::getExeDirectory(void) 
+std::string Model::getExeDirectory(void)
 {
     const size_t bufSize = 1024;
     char exePath[bufSize] = {0};
 
     const ssize_t len = readlink("/proc/self/exe", exePath, bufSize - 1);
-    if (len == -1) 
+    if (len == -1)
     {
         throw std::runtime_error("Failed to read executable path");
     }
     exePath[len] = '\0';
 
-    char* lastSlash = std::strrchr(exePath, '/');
-    if (!lastSlash) 
+    char *lastSlash = std::strrchr(exePath, '/');
+    if (!lastSlash)
     {
         throw std::runtime_error("Invalid executable path format");
     }
