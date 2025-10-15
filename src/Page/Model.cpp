@@ -207,6 +207,188 @@ Model::~Model()
     _view.release();
 }
 
+// 封装目录列表生成函数
+std::string generateDirListHtml(const std::string &current_url_path)
+{
+    std::string html = R"(
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>目录: /public/)" +
+                       current_url_path + R"(</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+        h1 { color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; }
+        .breadcrumb { margin: 1rem 0; color: #6b7280; font-size: 0.95rem; }
+        .breadcrumb a { color: #2b6cb0; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .file-list { list-style: none; padding: 0; margin-top: 1.5rem; }
+        .item { 
+            padding: 0.8rem 1rem; 
+            margin: 0.5rem 0; 
+            border-radius: 6px; 
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        .item:hover { background-color: #f7fafc; }
+        .item a { 
+            text-decoration: none; 
+            color: #2b6cb0; 
+            font-size: 1.05rem;
+            flex: 1;
+        }
+        .item a:hover { text-decoration: underline; }
+        .icon { margin-right: 0.8rem; font-size: 1.2rem; }
+        .dir-icon { color: #ecc94b; }
+        .file-icon { color: #4a5568; }
+        .parent-item { color: #718096; }
+    </style>
+</head>
+<body>
+    <h1>目录: /public/)" +
+                       current_url_path + R"(</h1>
+    <div class="breadcrumb">
+        <a href="/public">public</a>
+)";
+
+    // 修复1：面包屑导航路径拼接（避免多斜杠）
+    if (!current_url_path.empty())
+    {
+        std::string temp_path;
+        std::string remaining_path = current_url_path;
+        size_t pos = 0;
+
+        while ((pos = remaining_path.find('/')) != std::string::npos)
+        {
+            std::string dir_part = remaining_path.substr(0, pos);
+            if (dir_part.empty())
+            { // 跳过空路径（避免多斜杠导致的错误）
+                remaining_path = remaining_path.substr(pos + 1);
+                continue;
+            }
+            temp_path += dir_part + "/"; // 拼接上级目录路径（如 "sub1/"）
+            html += " / <a href=\"/public/" + temp_path + "\">" + dir_part + "</a>";
+            remaining_path = remaining_path.substr(pos + 1);
+        }
+
+        // 处理最后一级目录（如 "sub2"）
+        if (!remaining_path.empty())
+        {
+            html += " / <a href=\"/public/" + temp_path + remaining_path + "\">" + remaining_path + "</a>";
+        }
+    }
+
+    html += R"(
+    </div>
+    <ul class="file-list">
+)";
+
+    // 修复2：上级目录路径计算（核心！解决跳转失效问题）
+    if (!current_url_path.empty())
+    {
+        std::string parent_url_path;
+        size_t last_slash_pos = current_url_path.find_last_of('/');
+
+        if (last_slash_pos == std::string::npos)
+        {
+            // 情况1：当前是一级目录（如 "sub1"）→ 上级是根目录（空字符串）
+            parent_url_path = "";
+        }
+        else
+        {
+            // 情况2：当前是多级目录（如 "sub1/sub2"）→ 上级是 "sub1"
+            parent_url_path = current_url_path.substr(0, last_slash_pos);
+            // 避免上级路径以斜杠结尾（如 "sub1/" → 改为 "sub1"）
+            if (!parent_url_path.empty() && parent_url_path.back() == '/')
+            {
+                parent_url_path.pop_back();
+            }
+        }
+
+        // 生成上级目录链接（空路径对应 /public，非空路径对应 /public/parent）
+        std::string parent_url = parent_url_path.empty() ? "/public" : ("/public/" + parent_url_path);
+        html += R"(
+        <li class="item parent-item">
+            <span class="icon dir-icon">📁</span>
+            <a href=")" +
+                parent_url + R"(">.. (返回上级目录)</a>
+        </li>
+        )";
+    }
+
+    // 遍历当前目录文件（逻辑不变，确保路径正确）
+    std::string current_actual_dir = "./www/" + current_url_path;
+    DIR *dir = opendir(current_actual_dir.c_str());
+    if (dir)
+    {
+        dirent *entry;
+        while ((entry = readdir(dir)) != nullptr)
+        {
+            std::string name = entry->d_name;
+            if (name == "." || name == "..")
+                continue;
+
+            // 拼接文件/目录的 URL（避免多斜杠）
+            std::string entry_url_path;
+            if (current_url_path.empty())
+            {
+                entry_url_path = name; // 根目录下：直接用文件名（如 "pic.jpg"）
+            }
+            else
+            {
+                entry_url_path = current_url_path + "/" + name; // 子目录下：如 "sub1/pic.jpg"
+            }
+            std::string entry_url = "/public/" + entry_url_path;
+
+            // 判断目录/文件，生成对应链接
+            std::string entry_actual_path = current_actual_dir + "/" + name;
+            struct stat entry_stat;
+            if (stat(entry_actual_path.c_str(), &entry_stat) == 0)
+            {
+                if (S_ISDIR(entry_stat.st_mode))
+                {
+                    // 目录：URL 末尾加 /（确保跳转后识别为目录）
+                    html += R"(
+        <li class="item">
+            <span class="icon dir-icon">📁</span>
+            <a href=")" + entry_url +
+                            R"(/">)" + name + R"(/</a>
+        </li>
+                    )";
+                }
+                else
+                {
+                    // 文件：直接跳转（挂载规则处理）
+                    html += R"(
+        <li class="item">
+            <span class="icon file-icon">📄</span>
+            <a href=")" + entry_url +
+                            R"(">)" + name + R"(</a>
+        </li>
+                    )";
+                }
+            }
+        }
+        closedir(dir);
+    }
+    else
+    {
+        html += R"(
+        <li class="item"><span style="color: #dc2626;">❌ 无法访问目录（权限不足或目录不存在）</span></li>
+        )";
+    }
+
+    html += R"(
+    </ul>
+</body>
+</html>
+)";
+    return html;
+}
+
 /**
  * @brief 线程处理函数
  *
@@ -227,6 +409,27 @@ void *Model::threadProcHandler(void *arg)
     char buf[BUFSIZ];
     snprintf(buf, sizeof(buf), fmt, res.status);
     res.set_content(buf, "text/html"); });
+
+    // Mount /public to ./www directory
+    svr.set_mount_point("/public", "./www");
+    svr.set_file_extension_and_mimetype_mapping("cc", "text/x-c");
+    svr.set_file_extension_and_mimetype_mapping("cpp", "text/x-c");
+    svr.set_file_extension_and_mimetype_mapping("hh", "text/x-h");
+    svr.set_file_extension_and_mimetype_mapping("html", "text/html");
+    svr.set_file_extension_and_mimetype_mapping("htm", "text/html");
+    svr.set_file_extension_and_mimetype_mapping("css", "text/css");
+    svr.set_file_extension_and_mimetype_mapping("js", "text/javascript");
+    svr.set_file_extension_and_mimetype_mapping("json", "application/json");
+    svr.set_file_extension_and_mimetype_mapping("xml", "application/xml");
+    svr.set_file_extension_and_mimetype_mapping("png", "image/png");
+    svr.set_file_extension_and_mimetype_mapping("jpg", "image/jpeg");
+    svr.set_file_extension_and_mimetype_mapping("jpeg", "image/jpeg");
+    svr.set_file_extension_and_mimetype_mapping("gif", "image/gif");
+    svr.set_file_extension_and_mimetype_mapping("svg", "image/svg+xml");
+    svr.set_file_extension_and_mimetype_mapping("ico", "image/x-icon");
+    svr.set_file_extension_and_mimetype_mapping("pdf", "application/pdf");
+    svr.set_file_extension_and_mimetype_mapping("zip", "application/zip");
+    svr.set_file_extension_and_mimetype_mapping("txt", "text/plain");
 
     svr.Get("/", [](const httplib::Request &, httplib::Response &res)
             { res.set_content(html, "text/html"); });
@@ -261,6 +464,37 @@ void *Model::threadProcHandler(void *arg)
     }
 
     res.set_content("done", "text/plain"); });
+
+    svr.Get(R"(/public(/.*)?)", [&](const httplib::Request &req, httplib::Response &res)
+            {
+    // 解析当前 URL 路径（/public 后面的部分）
+    std::string current_url_path = req.matches[1];
+    if (!current_url_path.empty()) {
+        current_url_path = current_url_path.substr(1); // 去掉开头的 /，如 "/subdir" → "subdir"
+    }
+
+    // 拼接本地目录路径
+    std::string current_actual_dir = "./www/" + current_url_path;
+    struct stat path_stat;
+
+    // 情况1：路径不存在 → 返回 404
+    if (stat(current_actual_dir.c_str(), &path_stat) != 0) {
+        res.status = 404;
+        res.set_content("路径不存在：/public/" + current_url_path, "text/plain");
+        return;
+    }
+
+    // 情况2：是目录 → 生成目录列表网页
+    if (S_ISDIR(path_stat.st_mode)) {
+        std::string dir_html = generateDirListHtml(current_url_path);
+        res.set_content(dir_html, "text/html");
+        return;
+    }
+
+    // 情况3：是文件 → 直接返回 404 让挂载规则接管（关键！）
+    // 因为 /public 已挂载到 ./www，框架会自动处理 /public/xxx 的文件请求
+    // 这里不需要手动处理，直接让路由“不匹配”即可（返回 404 触发框架默认处理）
+    res.status = 404; });
 
     usleep(50000);
 
