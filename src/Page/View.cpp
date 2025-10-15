@@ -1,6 +1,5 @@
 #include "View.h"
 #include "Model.h"
-#include "../utils/lv_100ask_screenshot/lv_100ask_screenshot.h"
 #include "../utils/log/log.h"
 using namespace Page;
 
@@ -250,7 +249,6 @@ void View::applicationEventHandler(lv_event_t *event)
 }
 
 #include "../../libs/lvgl/src/extra/libs/png/lodepng.h"
-#include "../../utils/lv_100ask_screenshot/save_as_png.h"
 
 static void update_snapshot(lv_obj_t *obj, lv_obj_t *img_snapshot)
 {
@@ -259,16 +257,14 @@ static void update_snapshot(lv_obj_t *obj, lv_obj_t *img_snapshot)
     if (snapshot)
     {
         log_debug("snapshot has data, and kill it!");
-        lv_img_set_src(img_snapshot, NULL);
-        lv_img_cache_invalidate_src((const void *)snapshot);
-        lv_snapshot_free(snapshot);
+        // lv_img_set_src(img_snapshot, NULL);
+        // lv_img_cache_invalidate_src((const void *)snapshot);
+        // lv_snapshot_free(snapshot);
     }
 
     snapshot = lv_snapshot_take(obj, LV_IMG_CF_TRUE_COLOR_ALPHA);
 
     lv_img_set_src(img_snapshot, snapshot);
-
-    // save_as_png_file(snapshot->data, snapshot->header.w, snapshot->header.h, 32, (Model::getExeDirectory() + "screenshot.png").c_str());
 
     // lodepng_encode32_file((Model::getExeDirectory() + "screenshot.png").c_str(), snapshot->data, snapshot->header.w, snapshot->header.h);
 
@@ -291,43 +287,5 @@ void View::dropdownEventHandler(lv_event_t *event)
 
         update_snapshot(lv_scr_act(), instance->ui.snapshot);
 
-        // char dropdown_selected_str_buf[16];
-        // char file_name_buf[128];
-        // time_t timep;
-        // struct tm *p;
-        // char time_buffer [64];
-
-        // lv_dropdown_get_selected_str(obj, dropdown_selected_str_buf, sizeof(dropdown_selected_str_buf));
-
-        // time(&timep);
-        // p = gmtime(&timep);
-        // strftime (time_buffer, sizeof(time_buffer),"screenshot-%Y%m%d-%H%M%S",p);
-
-        // lv_snprintf(file_name_buf, sizeof(file_name_buf), "%s%s.%s", Model::getExeDirectory().c_str(), time_buffer, dropdown_selected_str_buf);
-
-        // log_debug("[View] New screenshot name: %s", file_name_buf);
-
-        // bool result = false;
-
-        // if(strcmp(dropdown_selected_str_buf, "bmp") == 0)
-        // {
-        // result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_BMP, file_name_buf);
-        // }
-        // else if(strcmp(dropdown_selected_str_buf, "png") == 0)
-        // {
-        //     result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_PNG, file_name_buf);
-        //     // Model::screenshot(file_name_buf);
-        // }
-        // else if(strcmp(dropdown_selected_str_buf, "jpg") == 0)
-        // {
-            // result = lv_100ask_screenshot_create(lv_scr_act(), LV_IMG_CF_TRUE_COLOR_ALPHA, LV_100ASK_SCREENSHOT_SV_JPEG, file_name_buf);
-        // }
-        // else
-        // {
-        //     log_debug("[View] did not success!");
-        //     return;
-        // }
-
-        // log_debug("[View] shot result is %d!", result);
     }
 }
