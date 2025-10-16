@@ -71,6 +71,9 @@ void *Model::threadProcHandler(void *arg)
     httplib::Server svr;
     svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
             { res.set_content("Hello World!", "text/plain"); });
+    svr.set_logger([](const httplib::Request& req, const httplib::Response& res) 
+    { log_debug("%s %s -> %d", req.method.c_str(), req.path.c_str(), res.status); });
+    
     usleep(50000);
     
     /* 读取数据 */
@@ -306,6 +309,28 @@ char **Model::stringToArgv(const char *exec, std::string &str)
     } while (++i < 5);
 
     return argv;
+}
+
+std::string Model::getExeDirectory(void) 
+{
+    const size_t bufSize = 1024;
+    char exePath[bufSize] = {0};
+
+    const ssize_t len = readlink("/proc/self/exe", exePath, bufSize - 1);
+    if (len == -1) 
+    {
+        throw std::runtime_error("Failed to read executable path");
+    }
+    exePath[len] = '\0';
+
+    char* lastSlash = std::strrchr(exePath, '/');
+    if (!lastSlash) 
+    {
+        throw std::runtime_error("Invalid executable path format");
+    }
+    *lastSlash = '\0';
+
+    return std::string(exePath) + '/';
 }
 
 /**
