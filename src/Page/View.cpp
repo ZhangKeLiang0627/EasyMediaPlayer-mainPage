@@ -248,8 +248,9 @@ void View::applicationEventHandler(lv_event_t *event)
     }
 }
 
+extern "C" {
 #include "../../libs/lvgl/src/extra/libs/png/lodepng.h"
-
+}
 static void update_snapshot(lv_obj_t *obj, lv_obj_t *img_snapshot)
 {
     lv_img_dsc_t *snapshot = (lv_img_dsc_t *)lv_img_get_src(img_snapshot);
@@ -266,8 +267,10 @@ static void update_snapshot(lv_obj_t *obj, lv_obj_t *img_snapshot)
 
     lv_img_set_src(img_snapshot, snapshot);
 
-    // lodepng_encode32_file((Model::getExeDirectory() + "screenshot.png").c_str(), snapshot->data, snapshot->header.w, snapshot->header.h);
+    unsigned int error = 0;
+    error = lodepng_encode32_file((Model::getExeDirectory() + "screenshot.png").c_str(), snapshot->data, snapshot->header.w, snapshot->header.h);
 
+    log_debug("lodepng_error_text: %s",lodepng_error_text(error));
     log_debug("screenshot path: %s", (Model::getExeDirectory() + "screenshot.png").c_str());
 }
 

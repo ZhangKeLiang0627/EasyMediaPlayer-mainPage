@@ -16,6 +16,8 @@ message(STATUS "Host architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
 
 # 基础编译选项
+add_definitions(-DLODEPNG_NO_COMPILE_CPP) # for lv_snapshot/screenshot in C++
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -g0 -Wall -Wno-unused-function -Wno-unused-variable -Wno-return-type -Wno-sign-compare -Wno-memset-transposed-args")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
 
@@ -43,7 +45,7 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64")
     set(LV_DRIVERS_USE_WAYLAND ON CACHE BOOL "Enable Wayland for local build")
 
     # 添加本地编译宏定义
-    add_definitions(-DLV_USE_DRAW_SDL=0 -DUSE_SDL=1 -DUSE_MOUSE=1)
+    add_definitions(-DLV_USE_DRAW_SDL=0 -DUSE_SDL=1 -DUSE_MOUSE=1 -DLODEPNG_NO_COMPILE_CPP)
     
     # 使用pkg-config查找SDL2
     find_package(SDL2 REQUIRED)
@@ -98,6 +100,7 @@ add_executable(${PROJECT_NAME} ${ALL_SRCS})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/lvgl)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/lv_drivers)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/spdlog)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/lodepng)
 
 # 链接库
 target_link_libraries(${PROJECT_NAME}
@@ -105,5 +108,6 @@ target_link_libraries(${PROJECT_NAME}
     lvgl::drivers
     freetype
     spdlog
+    # lodepng
     ${COMMON_LIBRARIES}
 )
