@@ -27,14 +27,20 @@ namespace Page
         {
             lv_obj_t *cont;
             lv_obj_t *image;
-            lv_obj_t *snapshot;
-            lv_obj_t *dropdown;
 
             struct
             {
                 lv_obj_t *cont;
                 lv_obj_t *btn;
             } btnCont;
+
+            struct
+            {
+                lv_obj_t *cont;
+                lv_obj_t *screenshotBtn;
+
+                lv_obj_t *titleLabel;
+            } topCont;
 
             lv_anim_timeline_t *anim_timeline;
             lv_anim_timeline_t *anim_timelineClick;
@@ -48,13 +54,16 @@ namespace Page
         void addApplication(const char *name, const char *exec, char *const argv[], void *icon);
 
     private:
+        void topContCreate(lv_obj_t *obj);
+
         static void onEvent(lv_event_t *event);
 
         static void applicationEventHandler(lv_event_t *event);
-        static void dropdownEventHandler(lv_event_t *e);
+        static void topContEventHandler(lv_event_t *event);
 
         lv_obj_t *roundRectCreate(lv_obj_t *par, lv_coord_t x_ofs, lv_coord_t y_ofs);
         lv_obj_t *btnCreate(lv_obj_t *par, void *img_src, const char *name);
+        lv_obj_t *btnCreate(lv_obj_t *par, const void *img_src, lv_coord_t x_ofs, lv_coord_t y_ofs, lv_coord_t w = 50, lv_coord_t h = 50);
 
         // lv_screenshot
         static void convertRGB2BGR(lv_img_dsc_t *snapshot);

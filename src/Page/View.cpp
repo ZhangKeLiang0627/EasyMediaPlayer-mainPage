@@ -59,11 +59,8 @@ void View::create(void)
     lv_obj_set_scroll_snap_x(btnCont, LV_SCROLL_SNAP_CENTER); // 设置在垂直滚动结束时捕捉子元素的位置：人话：打开菜单第一个item的位置，现在是居中
     ui.btnCont.cont = btnCont;
 
-    lv_obj_t *dd = lv_dropdown_create(cont);
-    lv_dropdown_set_options(dd, "bmp\npng\njpg");
-    lv_obj_align(dd, LV_ALIGN_TOP_RIGHT, -10, 10);
-    lv_obj_add_event_cb(dd, dropdownEventHandler, LV_EVENT_VALUE_CHANGED, this);
-    ui.dropdown = dd;
+    // topContCreate
+    topContCreate(ui.cont);
 
     // 动画的创建
     ui.anim_timeline = lv_anim_timeline_create();
@@ -84,13 +81,6 @@ void View::create(void)
     lv_anim_timeline_add_wrapper(ui.anim_timeline, wrapper);
 
     appearAnimStart();
-
-    // test
-    lv_obj_t *snapshot = lv_img_create(cont);
-    lv_obj_set_size(snapshot, 450, 450);
-    lv_obj_align(snapshot, LV_ALIGN_CENTER, 0, 0);
-    // lv_obj_add_flag(snapshot, LV_OBJ_FLAG_CLICKABLE);
-    ui.snapshot = snapshot;
 }
 
 void View::release()
@@ -131,6 +121,84 @@ void View::appearAnimClick(bool reverse) // 按钮动画
 {
     lv_anim_timeline_set_reverse(ui.anim_timelineClick, reverse);
     lv_anim_timeline_start(ui.anim_timelineClick);
+}
+
+void View::topContCreate(lv_obj_t *obj)
+{
+    lv_obj_t *cont = lv_obj_create(obj);
+    lv_obj_remove_style_all(cont);
+    lv_obj_set_size(cont, lv_pct(90), lv_pct(8));
+    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(cont, LV_OPA_90, 0);
+    lv_obj_set_style_bg_color(cont, lv_color_hex(0xeeeeee), 0);
+    lv_obj_align(cont, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_style_radius(cont, 5, LV_PART_MAIN);
+    ui.topCont.cont = cont;
+
+    lv_obj_t *screenshotBtn = btnCreate(cont, nullptr, 0, 0, 50, 30);
+    lv_obj_align(screenshotBtn, LV_ALIGN_TOP_LEFT, 5, 4);
+    lv_obj_set_style_bg_color(screenshotBtn, lv_color_hex(0xffd76d), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(screenshotBtn, lv_color_hex(0xdc9c00), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(screenshotBtn, lv_color_hex(0xffd76d), LV_STATE_FOCUSED);
+    lv_obj_set_ext_click_area(screenshotBtn, 10);
+    ui.topCont.screenshotBtn = screenshotBtn;
+    lv_obj_add_event_cb(screenshotBtn, topContEventHandler, LV_EVENT_SHORT_CLICKED, this);
+
+    lv_obj_t *screenshotBtnLabel = lv_label_create(ui.topCont.screenshotBtn);
+    lv_obj_remove_style_all(screenshotBtnLabel);
+    lv_obj_set_style_text_font(screenshotBtnLabel, &lv_font_montserrat_16, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(screenshotBtnLabel, lv_color_hex(0x454545), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(screenshotBtnLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(screenshotBtnLabel, LV_ALIGN_CENTER, 0, 0);
+    lv_label_set_text(screenshotBtnLabel, "Shot");
+
+    lv_obj_t *titleLabel = lv_label_create(cont);
+    lv_obj_remove_style_all(titleLabel);
+    lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(titleLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_color(titleLabel, lv_color_black(), 0);
+    lv_label_set_long_mode(titleLabel, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_align(titleLabel, LV_ALIGN_CENTER, 0, 0);
+    lv_label_set_text(titleLabel, "Main");
+    // lv_obj_set_size(titleLabel, lv_pct(60), LV_SIZE_CONTENT);
+
+    ui.topCont.titleLabel = titleLabel;
+}
+
+lv_obj_t *View::btnCreate(lv_obj_t *par, const void *img_src, lv_coord_t x_ofs, lv_coord_t y_ofs, lv_coord_t w, lv_coord_t h)
+{
+    lv_obj_t *obj = lv_obj_create(par);
+    lv_obj_remove_style_all(obj);
+    lv_obj_set_size(obj, w, h);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_align(obj, LV_ALIGN_LEFT_MID, x_ofs, y_ofs);
+    lv_obj_set_style_bg_img_src(obj, img_src, 0);
+
+    lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+    lv_obj_set_style_width(obj, w / 1.1f, LV_STATE_PRESSED);                   // 设置button按下时的宽
+    lv_obj_set_style_height(obj, h / 1.1f, LV_STATE_PRESSED);                  // 设置button按下时的长
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0x356b8c), 0);                 // 设置按钮默认的颜色
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0x242947), LV_STATE_PRESSED);  // 设置按钮在被按下时的颜色
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xf2daaa), LV_STATE_FOCUSED);  // 设置按钮在被聚焦时的颜色
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xa99991), LV_STATE_DISABLED); // 设置按钮失能时的颜色
+    lv_obj_set_style_radius(obj, 9, 0);                                        // 按钮画圆角
+
+    static lv_style_transition_dsc_t tran;
+    static const lv_style_prop_t prop[] = {LV_STYLE_WIDTH, LV_STYLE_HEIGHT, LV_STYLE_PROP_INV};
+    lv_style_transition_dsc_init(
+        &tran,
+        prop,
+        lv_anim_path_ease_out,
+        150,
+        0,
+        NULL);
+    lv_obj_set_style_transition(obj, &tran, LV_STATE_PRESSED);
+    lv_obj_set_style_transition(obj, &tran, LV_STATE_FOCUSED);
+
+    lv_obj_update_layout(obj);
+
+    return obj;
 }
 
 lv_obj_t *View::btnCreate(lv_obj_t *par, void *img_src, const char *name)
@@ -312,18 +380,20 @@ void View::screenshot(lv_obj_t *obj)
     }
 }
 
-void View::dropdownEventHandler(lv_event_t *event)
+void View::topContEventHandler(lv_event_t *event)
 {
     View *instance = (View *)lv_event_get_user_data(event);
     LV_ASSERT_NULL(instance);
 
-    lv_event_code_t code = lv_event_get_code(event);
     lv_obj_t *obj = lv_event_get_current_target(event);
+    lv_event_code_t code = lv_event_get_code(event);
 
-    log_debug("[View] screenshot!");
-
-    if (code == LV_EVENT_VALUE_CHANGED)
+    if (code == LV_EVENT_SHORT_CLICKED)
     {
-        screenshot(lv_scr_act());
+        if (obj == instance->ui.topCont.screenshotBtn)
+        {
+            log_debug("[View] screenshotBtn is short clicked");
+            screenshot(lv_scr_act());
+        }
     }
 }
