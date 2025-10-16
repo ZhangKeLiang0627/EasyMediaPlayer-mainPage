@@ -1,6 +1,13 @@
 #include "View.h"
 #include "Model.h"
 #include "../utils/log/log.h"
+#include "../../utils/FileOperations/FileOperations.h"
+
+extern "C"
+{
+#include "../../libs/lvgl/src/extra/libs/png/lodepng.h"
+}
+
 using namespace Page;
 
 // LV_IMG_DECLARE(img_src_bootlogo);
@@ -248,33 +255,63 @@ void View::applicationEventHandler(lv_event_t *event)
     }
 }
 
-extern "C" {
-#include "../../libs/lvgl/src/extra/libs/png/lodepng.h"
-}
-static void update_snapshot(lv_obj_t *obj, lv_obj_t *img_snapshot)
+void View::convertRGB2BGR(lv_img_dsc_t *snapshot)
 {
-    lv_img_dsc_t *snapshot = (lv_img_dsc_t *)lv_img_get_src(img_snapshot);
+    uint8_t tmp_data = 0;
+    uint32_t count = 0;
+    for (int w = 0; w < snapshot->header.w; w++)
+    {
+        for (int h = 0; h < snapshot->header.h; h++)
+        {
+            tmp_data = *(snapshot->data + count);
+            *(uint8_t *)(snapshot->data + count) = *(snapshot->data + count + 2);
+            *(uint8_t *)(snapshot->data + count + 2) = tmp_data;
+            count += 4;
+        }
+    }
+}
+
+void View::screenshot(lv_obj_t *obj)
+{
+
+    char fileNameBuffer[128];
+    time_t timep;
+    struct tm *p;
+    char timeBuffer[64];
+
+    time(&timep);
+    p = gmtime(&timep);
+    strftime(timeBuffer, sizeof(timeBuffer), "picture/screenshot/screenshot-%Y%m%d-%H%M%S", p);
+
+    lv_snprintf(fileNameBuffer, sizeof(fileNameBuffer), "%s%s.%s", Model::getExeDirectory().c_str(), timeBuffer, "png");
+
+    lv_img_dsc_t *snapshot = lv_snapshot_take(obj, LV_IMG_CF_TRUE_COLOR_ALPHA);
+
+    unsigned int error = 0;
+    std::error_code ec;
+
+    log_debug("screenshot path: %s", fileNameBuffer);
+
+    if (!FileOperations::exists(fileNameBuffer, ec))
+    {
+        // 文件不存在，则创建
+        FileOperations::createAny(fileNameBuffer, false, true, ec);
+    }
+
+    // PNG的期望buffer为BGR，lv_snapshot得到的buffer是RGB，这里需要转换
+    convertRGB2BGR(snapshot);
+
+    error = lodepng_encode32_file(fileNameBuffer, snapshot->data, snapshot->header.w, snapshot->header.h);
+
+    log_debug("lodepng_error_text: %s", lodepng_error_text(error));
 
     if (snapshot)
     {
         log_debug("snapshot has data, and kill it!");
-        // lv_img_set_src(img_snapshot, NULL);
-        // lv_img_cache_invalidate_src((const void *)snapshot);
-        // lv_snapshot_free(snapshot);
+        lv_snapshot_free(snapshot);
     }
-
-    snapshot = lv_snapshot_take(obj, LV_IMG_CF_TRUE_COLOR_ALPHA);
-
-    lv_img_set_src(img_snapshot, snapshot);
-
-    unsigned int error = 0;
-    error = lodepng_encode32_file((Model::getExeDirectory() + "screenshot.png").c_str(), snapshot->data, snapshot->header.w, snapshot->header.h);
-
-    log_debug("lodepng_error_text: %s",lodepng_error_text(error));
-    log_debug("screenshot path: %s", (Model::getExeDirectory() + "screenshot.png").c_str());
 }
 
-#include <time.h>
 void View::dropdownEventHandler(lv_event_t *event)
 {
     View *instance = (View *)lv_event_get_user_data(event);
@@ -287,8 +324,6 @@ void View::dropdownEventHandler(lv_event_t *event)
 
     if (code == LV_EVENT_VALUE_CHANGED)
     {
-
-        update_snapshot(lv_scr_act(), instance->ui.snapshot);
-
+        screenshot(lv_scr_act());
     }
 }

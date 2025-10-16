@@ -51,10 +51,14 @@ namespace Page
         static void onEvent(lv_event_t *event);
 
         static void applicationEventHandler(lv_event_t *event);
-        static void dropdownEventHandler(lv_event_t * e);
+        static void dropdownEventHandler(lv_event_t *e);
 
         lv_obj_t *roundRectCreate(lv_obj_t *par, lv_coord_t x_ofs, lv_coord_t y_ofs);
         lv_obj_t *btnCreate(lv_obj_t *par, void *img_src, const char *name);
+
+        // lv_screenshot
+        static void convertRGB2BGR(lv_img_dsc_t *snapshot);
+        static void screenshot(lv_obj_t *obj);
     };
 
 }
