@@ -2,6 +2,7 @@
 #include "Model.h"
 #include "../utils/log/log.h"
 #include "../../utils/FileOperations/FileOperations.h"
+#include "../../utils/Animations/Animations.h"
 
 extern "C"
 {
@@ -147,7 +148,7 @@ void View::topContCreate(lv_obj_t *obj)
     lv_obj_t *screenshotBtnLabel = lv_label_create(ui.topCont.screenshotBtn);
     lv_obj_remove_style_all(screenshotBtnLabel);
     lv_obj_set_style_text_font(screenshotBtnLabel, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(screenshotBtnLabel, lv_color_hex(0x454545), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(screenshotBtnLabel, lv_color_hex(0x222222), LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(screenshotBtnLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(screenshotBtnLabel, LV_ALIGN_CENTER, 0, 0);
     lv_label_set_text(screenshotBtnLabel, "Shot");
@@ -275,6 +276,37 @@ lv_obj_t *View::roundRectCreate(lv_obj_t *par, lv_coord_t x_ofs, lv_coord_t y_of
     return roundRect;
 }
 
+void View::sideTipsPopupCreate(lv_obj_t *obj, const char *tips)
+{
+    lv_obj_t *sidePop = lv_obj_create(obj);
+    lv_obj_remove_style_all(sidePop);
+    lv_obj_set_size(sidePop, 90 + 90, 40);
+    lv_obj_set_style_bg_opa(sidePop, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(sidePop, lv_color_hex(0xaaaaaa), LV_PART_MAIN);
+    lv_obj_align(sidePop, LV_ALIGN_BOTTOM_RIGHT, 60, -10);
+    lv_obj_set_style_radius(sidePop, 10, LV_PART_MAIN);
+    lv_obj_set_user_data(sidePop, (void *)"sidePop");
+    lv_obj_clear_state(sidePop, LV_STATE_CHECKED);
+
+    lv_obj_t *label = lv_label_create(sidePop);
+    lv_obj_remove_style_all(label);
+    lv_obj_set_size(label, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_22, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(label, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    lv_obj_align(label, LV_ALIGN_LEFT_MID, 10, 0);
+    lv_label_set_text(label, tips);
+    lv_anim_move(sidePop, 10, -90, 700, 0);
+
+    // 创建一次性定时器，2秒后执行淡出动画
+    lv_timer_t *timer = lv_timer_create([](lv_timer_t *timer)
+                                        {
+            lv_obj_t *sidePop = (lv_obj_t *)timer->user_data;
+            lv_anim_drop_out(sidePop); }, 1500, sidePop);
+    lv_timer_set_repeat_count(timer, 1);
+}
+
 /**
  * @brief 在主界面添加一个app icon
  * @param name 应用程序名称
@@ -371,7 +403,7 @@ void View::screenshot(lv_obj_t *obj)
 
     error = lodepng_encode32_file(fileNameBuffer, snapshot->data, snapshot->header.w, snapshot->header.h);
 
-    log_debug("lodepng_error_text: %s", lodepng_error_text(error));
+    log_debug("lodepng_error_text: %s -> %d", lodepng_error_text(error), error);
 
     if (snapshot)
     {
@@ -394,6 +426,8 @@ void View::topContEventHandler(lv_event_t *event)
         {
             log_debug("[View] screenshotBtn is short clicked");
             screenshot(lv_scr_act());
+
+            instance->sideTipsPopupCreate(lv_layer_top(), "snapshot Get!");
         }
     }
 }

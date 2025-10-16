@@ -61,6 +61,7 @@ namespace Page
         static void applicationEventHandler(lv_event_t *event);
         static void topContEventHandler(lv_event_t *event);
 
+        void sideTipsPopupCreate(lv_obj_t *obj, const char *tips);
         lv_obj_t *roundRectCreate(lv_obj_t *par, lv_coord_t x_ofs, lv_coord_t y_ofs);
         lv_obj_t *btnCreate(lv_obj_t *par, void *img_src, const char *name);
         lv_obj_t *btnCreate(lv_obj_t *par, const void *img_src, lv_coord_t x_ofs, lv_coord_t y_ofs, lv_coord_t w = 50, lv_coord_t h = 50);
