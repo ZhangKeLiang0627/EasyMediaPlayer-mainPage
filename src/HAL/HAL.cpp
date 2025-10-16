@@ -133,10 +133,10 @@ void signalExitCallback(int signal)
 #ifdef __aarch64__
 // 64位ARM架构 / AArch64
 #elif defined(__arm__)
-// 32位ARM架构 / AArch64
+    // 32位ARM架构 / AArch64
     sunxifb_free((void **)&lv_disp_get_default()->driver->draw_buf->buf1, (char *)"lv_examples");
     sunxifb_exit();
-    lv_deinit();
+    // lv_deinit();
 #elif defined(__x86_64__)
 // x86 / 电脑
 #endif
