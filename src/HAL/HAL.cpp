@@ -107,21 +107,6 @@ void HAL::Init(void)
 }
 
 /**
- * @brief LVGL处理函数
- *
- */
-void HAL::LVGL_Proc(void)
-{
-    for (;;)
-    {
-        pthread_mutex_lock(&lv_mutex);
-        uint32_t ms = lv_task_handler();
-        pthread_mutex_unlock(&lv_mutex);
-        usleep(ms * 1000);
-    }
-}
-
-/**
  * @brief 系统退出回调函数
  *
  * @param signal
@@ -133,7 +118,7 @@ void signalExitCallback(int signal)
 #ifdef __aarch64__
 // 64位ARM架构 / AArch64
 #elif defined(__arm__)
-    // 32位ARM架构 / AArch64
+    // 32位ARM架构 / AArch32
     sunxifb_free((void **)&lv_disp_get_default()->driver->draw_buf->buf1, (char *)"lv_examples");
     sunxifb_exit();
     // lv_deinit();

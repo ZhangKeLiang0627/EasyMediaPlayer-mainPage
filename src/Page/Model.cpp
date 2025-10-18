@@ -31,10 +31,9 @@ using namespace Page;
  * @param exitCb
  * @param mutex
  */
-Model::Model(std::function<void(void)> exitCb, pthread_mutex_t &mutex)
+Model::Model(std::function<void(void)> exitCb)
 {
     _threadExitFlag = false;
-    _mutex = &mutex;
 
     // 设置UI回调函数
     Operations uiOpts = {0};
@@ -50,54 +49,85 @@ Model::Model(std::function<void(void)> exitCb, pthread_mutex_t &mutex)
     /* 创建UI */
     _view.create();
 
-    pthread_create(&_pthread, NULL, threadProcHandler, this); // 创建执行线程，传递this指针
+    // 创建lvgl处理线程，传递this指针
+    _threadLvgl = std::thread([](Model *pThis)
+                              { pThis->threadLvglHandler(); }, this);
+    _threadLvgl.detach();
+
+    // 创建data处理线程，传递this指针
+    _threadDataProc = std::thread([](Model *pThis)
+                                  { pThis->threadDataProcHandler(); }, this);
+
+    // _cv.notify_all();
 }
 
 Model::~Model()
 {
     _threadExitFlag = true;
+    // _cv.notify_all(); // 唤醒休眠中的线程，使其立即检查退出标志
+
+    // 等待线程退出，回收资源
+    if (_threadDataProc.joinable())
+    {
+        log_info("[Model] joining _threadDataProc...");
+        _threadDataProc.join();
+        log_info("[Model] _threadDataProc joined");
+    }
 
     _view.release();
+
+    log_info("[Model] ~Model exit!");
+}
+
+/**
+ * @brief LVGL处理线程
+ */
+void Model::threadLvglHandler(void)
+{
+    while (!_threadExitFlag)
+    {
+        std::unique_lock<std::mutex> lock(_mutex);
+        uint32_t ms = lv_task_handler();
+        lock.unlock();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
+    log_info("[Model] threadLvglHandler exit!");
 }
 
 /**
  * @brief 线程处理函数
- *
- * @return void*
  */
-void *Model::threadProcHandler(void *arg)
+void Model::threadDataProcHandler(void)
 {
-    Model *model = static_cast<Model *>(arg); // 将arg转换为Model指针
     httplib::Server svr;
     svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
             { res.set_content("Hello World!", "text/plain"); });
-    svr.set_logger([](const httplib::Request& req, const httplib::Response& res) 
-    { log_debug("%s %s -> %d", req.method.c_str(), req.path.c_str(), res.status); });
-    
+    svr.set_logger([](const httplib::Request &req, const httplib::Response &res)
+                   { log_debug("%s %s -> %d", req.method.c_str(), req.path.c_str(), res.status); });
+
     usleep(50000);
-    
-    /* 读取数据 */
+
     // 读取配置文件
-    if (model->readConfig() != true)
+    if (readConfig() != true)
     {
         // 写入缺省信息到配置文件
-        model->saveConfig();
+        saveConfig();
     }
 
-    /* Initialize Appalication */
-    pthread_mutex_lock(model->_mutex);
-    model->installApplications(model->_sysConfig.appVector);
-    pthread_mutex_unlock(model->_mutex);
+    // Initialize Appalication
+    std::unique_lock<std::mutex> lock(_mutex);
+    installApplications(_sysConfig.appVector);
+    lock.unlock();
 
-    while (!model->_threadExitFlag)
+    svr.listen("0.0.0.0", 6210);
+
+    while (!_threadExitFlag)
     {
-        svr.listen("0.0.0.0", 6210);
-        // pthread_mutex_lock(model->_mutex);
-        // // ...
-        // pthread_mutex_unlock(model->_mutex);
-
         usleep(50000);
     }
+
+    log_info("[Model] threadDataProcHandler exit!");
 }
 
 /**
@@ -255,9 +285,9 @@ void Model::runApplication(const char *exec, char *const argv[])
         }
     }
 
-    wait(nullptr);           // 阻塞等待子进程返回
+    wait(nullptr); // 阻塞等待子进程返回
     printf("[View] return to mainPage!\n");
-    
+
     // lv_async_call([](void *data){
     //     Model *model = (Model *)data;
     //     model->_view.appearAnimStart(false);}, this);
@@ -311,20 +341,20 @@ char **Model::stringToArgv(const char *exec, std::string &str)
     return argv;
 }
 
-std::string Model::getExeDirectory(void) 
+std::string Model::getExeDirectory(void)
 {
     const size_t bufSize = 1024;
     char exePath[bufSize] = {0};
 
     const ssize_t len = readlink("/proc/self/exe", exePath, bufSize - 1);
-    if (len == -1) 
+    if (len == -1)
     {
         throw std::runtime_error("Failed to read executable path");
     }
     exePath[len] = '\0';
 
-    char* lastSlash = std::strrchr(exePath, '/');
-    if (!lastSlash) 
+    char *lastSlash = std::strrchr(exePath, '/');
+    if (!lastSlash)
     {
         throw std::runtime_error("Invalid executable path format");
     }
