@@ -373,7 +373,6 @@ void View::convertRGB2BGR(lv_img_dsc_t *snapshot)
 
 void View::screenshot(lv_obj_t *obj)
 {
-
     char fileNameBuffer[128];
     time_t timep;
     struct tm *p;
