@@ -25,7 +25,6 @@ int main(int argc, char *argv[])
     if (ret != 0)
     {
         std::cerr << "Failed to start UDiskMonitor, error code: " << ret << std::endl;
-        return ret;
     }
 
     for (;;)
