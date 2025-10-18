@@ -27,6 +27,7 @@ set(COMMON_LIBRARIES
     stdc++
     # cdx_base
     # ncurses
+    udev
     m
 )
 
@@ -47,8 +48,9 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64")
     # 添加本地编译宏定义
     add_definitions(-DLV_USE_DRAW_SDL=0 -DUSE_SDL=1 -DUSE_MOUSE=1)
     
-    # 使用pkg-config查找SDL2
+    # 查找SDL2库
     find_package(SDL2 REQUIRED)
+    include_directories(${SDL2_INCLUDE_DIRS})
     list(APPEND COMMON_LIBRARIES ${SDL2_LIBRARIES})
 
     # 添加Freetype头文件路径
