@@ -137,9 +137,24 @@ void UDiskMonitor::handleUdevEvent(int fd)
 {
     std::lock_guard<std::mutex> lock(instanceMutex_);
 
+    std::cout << "UDiskMonitor handleUdevEvent begin" << std::endl;
+
     // 检查实例有效性
     if (!instance_ || instance_->udevFd_ != fd || !instance_->udevMonitor_)
     {
+        if (!instance_)
+        {
+            std::cerr << "UDiskMonitor instance is null, cannot handle udev event" << std::endl;
+        }
+        else if (instance_->udevFd_ != fd)
+        {
+            std::cerr << "Udev fd mismatch (expected: " << instance_->udevFd_
+                      << ", actual: " << fd << "), skip event" << std::endl;
+        }
+        else if (!instance_->udevMonitor_)
+        {
+            std::cerr << "Udev monitor is null, cannot receive device event" << std::endl;
+        }
         return;
     }
 
@@ -147,6 +162,7 @@ void UDiskMonitor::handleUdevEvent(int fd)
     udev_device *dev = udev_monitor_receive_device(instance_->udevMonitor_);
     if (!dev)
     {
+        std::cerr << "Failed to receive udev device event (maybe no new event)" << std::endl;
         return;
     }
 
@@ -171,6 +187,7 @@ void UDiskMonitor::handleUdevEvent(int fd)
         // 触发回调函数
         if (instance_->eventCallback_)
         {
+            std::cout << "UDiskMonitor eventCallback_ begin" << std::endl;
             instance_->eventCallback_(eventType, devName, mountPoint);
         }
     }

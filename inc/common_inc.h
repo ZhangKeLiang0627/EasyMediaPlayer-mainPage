@@ -16,9 +16,11 @@
 #include <chrono>
 #include <functional>
 #include <atomic>
+#include <iostream>
 
 #include "../libs/lvgl/lvgl.h"
 #include "../libs/lv_drivers/display/sunxifb.h"
 #include "../libs/lv_drivers/indev/evdev.h"
 #include "../utils/log/log.h"
+#include "../utils/xepoll/xepoll.h"
 #include "HAL.h"

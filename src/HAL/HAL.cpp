@@ -126,6 +126,8 @@ void signalExitCallback(int signal)
 // x86 / 电脑
 #endif
 
+    MY_EPOLL.EpoolQuit();
+
     exit(0);
 }
 
@@ -169,4 +171,25 @@ uint32_t custom_tick_get(void)
 
     uint32_t time_ms = now_ms - start_ms;
     return time_ms;
+}
+
+void HAL::onUDiskEvent(const std::string &eventType, const std::string &devName, const std::string &mountPoint)
+{
+    if (eventType == "add")
+    {
+        if (!mountPoint.empty())
+        {
+            std::cout << "USB device inserted: " << devName
+                      << ", mounted at: " << mountPoint << std::endl;
+        }
+        else
+        {
+            std::cout << "USB device inserted: " << devName
+                      << ", not mounted" << std::endl;
+        }
+    }
+    else if (eventType == "remove")
+    {
+        std::cout << "USB device removed: " << devName << std::endl;
+    }
 }

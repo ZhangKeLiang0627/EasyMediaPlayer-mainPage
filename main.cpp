@@ -1,7 +1,9 @@
 #include "../inc/common_inc.h"
 #include "Model.h"
+#include "udiskMonitor.h"
 
 static Page::Model *model;
+static UDiskMonitor monitor;
 
 static void exitCallback(void);
 
@@ -17,6 +19,14 @@ int main(int argc, char *argv[])
 
     // model初始化
     model = new Page::Model(exitCallback);
+
+    // udisk设备监控启动
+    int ret = monitor.start(HAL::onUDiskEvent);
+    if (ret != 0)
+    {
+        std::cerr << "Failed to start UDiskMonitor, error code: " << ret << std::endl;
+        return ret;
+    }
 
     for (;;)
     {
