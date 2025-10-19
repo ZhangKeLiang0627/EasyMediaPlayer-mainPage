@@ -6,7 +6,6 @@
 #include <cstring>
 
 // 静态成员初始化
-UDiskMonitor *UDiskMonitor::instance_ = nullptr;
 std::mutex UDiskMonitor::instanceMutex_;
 
 UDiskMonitor::~UDiskMonitor()
@@ -85,9 +84,6 @@ int UDiskMonitor::start(UDiskEventCallback callback)
         return -7;
     }
 
-    // 保存当前实例（供静态回调使用）
-    instance_ = this;
-
     // 扫描已存在的U盘设备（初始化状态）
     scanExistingDevices();
 
@@ -127,7 +123,6 @@ void UDiskMonitor::stop()
     }
 
     // 清空实例和回调
-    instance_ = nullptr;
     eventCallback_ = nullptr;
 
     std::cout << "UDiskMonitor stopped" << std::endl;
@@ -138,6 +133,8 @@ void UDiskMonitor::handleUdevEvent(int fd)
     std::lock_guard<std::mutex> lock(instanceMutex_);
 
     std::cout << "UDiskMonitor handleUdevEvent begin" << std::endl;
+
+    UDiskMonitor *instance_ = &UDiskMonitor::getInstance();
 
     // 检查实例有效性
     if (!instance_ || instance_->udevFd_ != fd || !instance_->udevMonitor_)

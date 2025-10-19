@@ -21,8 +21,18 @@ using UDiskEventCallback = std::function<void(const std::string &, const std::st
 class UDiskMonitor
 {
 public:
-    UDiskMonitor() = default;
-    ~UDiskMonitor();
+    // 禁止拷贝构造和赋值（单例模式）
+    UDiskMonitor(const UDiskMonitor &) = delete;
+    UDiskMonitor &operator=(const UDiskMonitor &) = delete;
+
+    /**
+     * @brief 获取单例实例
+     */
+    static UDiskMonitor &getInstance()
+    {
+        static UDiskMonitor instance;
+        return instance;
+    }
 
     /**
      * @brief 启动U盘监控
@@ -37,9 +47,9 @@ public:
     void stop();
 
 private:
-    // 禁止拷贝构造和赋值（单实例使用）
-    UDiskMonitor(const UDiskMonitor &) = delete;
-    UDiskMonitor &operator=(const UDiskMonitor &) = delete;
+    // 私有构造函数（单例模式）
+    UDiskMonitor() = default;
+    ~UDiskMonitor();
 
     /**
      * @brief 处理epoll触发的udev事件（静态回调）
@@ -71,7 +81,6 @@ private:
     int udevFd_ = -1;                     // 监控器文件描述符
     UDiskEventCallback eventCallback_;    // 事件回调函数
 
-    static UDiskMonitor *instance_;   // 静态实例指针（供回调使用）
     static std::mutex instanceMutex_; // 线程安全锁
 };
 
