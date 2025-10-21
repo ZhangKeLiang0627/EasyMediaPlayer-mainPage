@@ -1,12 +1,12 @@
 #include "udiskMonitor.h"
 #include "../../utils/xepoll/xepoll.h"
+#include "../../utils/xepoll/xinotify.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <cstring>
-
-// 静态成员初始化
-std::mutex UDiskMonitor::instanceMutex_;
+#include <dirent.h>
+#include <algorithm>
 
 UDiskMonitor::~UDiskMonitor()
 {
@@ -15,7 +15,7 @@ UDiskMonitor::~UDiskMonitor()
 
 int UDiskMonitor::start(UDiskEventCallback callback)
 {
-    std::lock_guard<std::mutex> lock(instanceMutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
 
     // 检查是否已启动
     if (udevContext_ != nullptr)
@@ -40,60 +40,20 @@ int UDiskMonitor::start(UDiskEventCallback callback)
         return -3;
     }
 
-    // 创建udev监控器（监听udev netlink）
-    udevMonitor_ = udev_monitor_new_from_netlink(udevContext_, "udev");
-    if (!udevMonitor_)
+    // 监控/sys/class/block目录（块设备符号链接目录）
+    const std::string blockDir = "/sys/class/block";
+    bool ret = inotify_.AddFileWatch(blockDir,
+                                     std::bind(&UDiskMonitor::handleBlockDirChangedEvent, this));
+    if (!ret)
     {
-        std::cerr << "Failed to create udev monitor" << std::endl;
+        std::cerr << "Failed to watch " << blockDir << std::endl;
         udev_unref(udevContext_);
         udevContext_ = nullptr;
-        return -4;
-    }
-
-    // 设置监控过滤规则（仅关注block子系统）
-    if (udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "block", nullptr) < 0)
-    {
-        std::cerr << "Failed to set udev filter" << std::endl;
-        udev_monitor_unref(udevMonitor_);
-        udev_unref(udevContext_);
-        udevMonitor_ = nullptr;
-        udevContext_ = nullptr;
-        return -5;
-    }
-
-    // 启动监控器
-    if (udev_monitor_enable_receiving(udevMonitor_) < 0)
-    {
-        std::cerr << "Failed to enable udev monitor" << std::endl;
-        udev_monitor_unref(udevMonitor_);
-        udev_unref(udevContext_);
-        udevMonitor_ = nullptr;
-        udevContext_ = nullptr;
-        return -6;
-    }
-
-    // 获取监控器文件描述符
-    udevFd_ = udev_monitor_get_fd(udevMonitor_);
-    if (udevFd_ < 0)
-    {
-        std::cerr << "Failed to get udev monitor fd" << std::endl;
-        udev_monitor_unref(udevMonitor_);
-        udev_unref(udevContext_);
-        udevMonitor_ = nullptr;
-        udevContext_ = nullptr;
-        return -7;
+        return -3;
     }
 
     // 扫描已存在的U盘设备（初始化状态）
     scanExistingDevices();
-
-    // 将udev fd注册到epoll，监听读事件
-    if (MY_EPOLL.EpollAddRead(udevFd_, &UDiskMonitor::handleUdevEvent) < 0)
-    {
-        std::cerr << "Failed to register udev fd to epoll" << std::endl;
-        stop();
-        return -8;
-    }
 
     std::cout << "UDiskMonitor started successfully" << std::endl;
     return 0;
@@ -101,96 +61,91 @@ int UDiskMonitor::start(UDiskEventCallback callback)
 
 void UDiskMonitor::stop()
 {
-    std::lock_guard<std::mutex> lock(instanceMutex_);
-
-    // 从epoll中移除监控
-    if (udevFd_ != -1)
-    {
-        MY_EPOLL.EpollDel(udevFd_);
-        udevFd_ = -1;
-    }
+    std::lock_guard<std::mutex> lock(mutex_);
 
     // 释放udev资源
-    if (udevMonitor_)
-    {
-        udev_monitor_unref(udevMonitor_);
-        udevMonitor_ = nullptr;
-    }
     if (udevContext_)
     {
         udev_unref(udevContext_);
         udevContext_ = nullptr;
     }
 
-    // 清空实例和回调
+    // 清空回调和监控列表
     eventCallback_ = nullptr;
+    watchedDevs_.clear();
+
+    // 结束inotify监听事件
+    const std::string blockDir = "/sys/class/block";
+    inotify_.DelFileWatch(blockDir);
 
     std::cout << "UDiskMonitor stopped" << std::endl;
 }
 
-void UDiskMonitor::handleUdevEvent(int fd)
+// 核心：处理/sys/class/block目录变化（设备增减）
+void UDiskMonitor::handleBlockDirChangedEvent()
 {
-    std::lock_guard<std::mutex> lock(instanceMutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::cout << "Block directory changed, checking devices..." << std::endl;
 
-    std::cout << "UDiskMonitor handleUdevEvent begin" << std::endl;
-
-    UDiskMonitor *instance_ = &UDiskMonitor::getInstance();
-
-    // 检查实例有效性
-    if (!instance_ || instance_->udevFd_ != fd || !instance_->udevMonitor_)
+    // 1. 读取当前目录下的所有设备（如sda、sda1）
+    const std::string blockDir = "/sys/class/block";
+    DIR *dir = opendir(blockDir.c_str());
+    if (!dir)
     {
-        if (!instance_)
-        {
-            std::cerr << "UDiskMonitor instance is null, cannot handle udev event" << std::endl;
-        }
-        else if (instance_->udevFd_ != fd)
-        {
-            std::cerr << "Udev fd mismatch (expected: " << instance_->udevFd_
-                      << ", actual: " << fd << "), skip event" << std::endl;
-        }
-        else if (!instance_->udevMonitor_)
-        {
-            std::cerr << "Udev monitor is null, cannot receive device event" << std::endl;
-        }
+        std::cerr << "Failed to open " << blockDir << std::endl;
         return;
     }
 
-    // 读取udev事件
-    udev_device *dev = udev_monitor_receive_device(instance_->udevMonitor_);
-    if (!dev)
+    std::vector<std::string> currentDevs;
+    dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
     {
-        std::cerr << "Failed to receive udev device event (maybe no new event)" << std::endl;
-        return;
-    }
-
-    // 提取事件信息
-    const char *action = udev_device_get_action(dev);
-    const char *devNode = udev_device_get_devnode(dev); // 设备节点（如/dev/sdb1）
-    const char *sysName = udev_device_get_sysname(dev); // 设备名（如sdb1）
-
-    // 仅处理USB设备的有效事件
-    if (action && devNode && sysName && instance_->isUsbDevice(dev))
-    {
-        std::string eventType(action);
-        std::string devName(sysName);
-        std::string mountPoint;
-
-        // 仅add事件需要获取挂载点
-        if (eventType == "add")
+        // 过滤.和..，只保留sd开头的设备（U盘通常以sd开头）
+        if (entry->d_name[0] != '.' && strncmp(entry->d_name, "sd", 2) == 0)
         {
-            mountPoint = instance_->getMountPoint(devNode);
+            currentDevs.push_back(entry->d_name);
         }
+    }
+    closedir(dir);
 
-        // 触发回调函数
-        if (instance_->eventCallback_)
+    // 2. 对比已监控列表，找出新增和删除的设备
+    // 新增设备（存在于currentDevs但不在watchedDevs_）
+    for (const auto &dev : currentDevs)
+    {
+        if (std::find(watchedDevs_.begin(), watchedDevs_.end(), dev) == watchedDevs_.end())
         {
-            std::cout << "UDiskMonitor eventCallback_ begin" << std::endl;
-            instance_->eventCallback_(eventType, devName, mountPoint);
+            // 检查是否为USB设备
+            if (isUsbDevice(dev))
+            {
+                std::string devNode = "/dev/" + dev;
+                std::string mountPoint = getMountPoint(devNode);
+                if (eventCallback_)
+                {
+                    eventCallback_("add", dev, mountPoint);
+                }
+                watchedDevs_.push_back(dev); // 加入已监控列表
+            }
         }
     }
 
-    // 释放设备资源
-    udev_device_unref(dev);
+    // 删除设备（存在于watchedDevs_但不在currentDevs）
+    std::vector<std::string> newWatched;
+    for (const auto &dev : watchedDevs_)
+    {
+        if (std::find(currentDevs.begin(), currentDevs.end(), dev) != currentDevs.end())
+        {
+            newWatched.push_back(dev); // 保留仍存在的设备
+        }
+        else
+        {
+            // 触发拔出事件
+            if (eventCallback_)
+            {
+                eventCallback_("remove", dev, "");
+            }
+        }
+    }
+    watchedDevs_.swap(newWatched); // 更新已监控列表
 }
 
 void UDiskMonitor::scanExistingDevices()
@@ -253,6 +208,25 @@ bool UDiskMonitor::isUsbDevice(udev_device *dev)
 {
     const char *busType = udev_device_get_property_value(dev, "ID_BUS");
     return (busType && std::strcmp(busType, "usb") == 0);
+}
+
+bool UDiskMonitor::isUsbDevice(const std::string &devName)
+{
+    if (!udevContext_)
+        return false;
+
+    // 获取设备的sysfs路径
+    std::string sysPath = "/sys/class/block/" + devName;
+    udev_device *dev = udev_device_new_from_syspath(udevContext_, sysPath.c_str());
+    if (!dev)
+        return false;
+
+    // 检查sysfs路径是否包含"usb"（适配嵌入式系统）
+    const char *syspath = udev_device_get_syspath(dev);
+    bool isUsb = (syspath && strstr(syspath, "usb") != nullptr);
+
+    udev_device_unref(dev);
+    return isUsb;
 }
 
 std::string UDiskMonitor::getMountPoint(const std::string &devNode)

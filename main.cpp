@@ -6,6 +6,13 @@ static Page::Model *model;
 
 static void exitCallback(void);
 
+Xinotify inotify_; // inotify监控器
+
+void NotifyHandler()
+{
+    log_debug("[xinotify] /mnt/UDISK/picture dir is changed");
+}
+
 int main(int argc, char *argv[])
 {
     // log init
@@ -19,12 +26,19 @@ int main(int argc, char *argv[])
     // model初始化
     model = new Page::Model(exitCallback);
 
-    // udisk设备监控启动
-    int ret = UDiskMonitor::getInstance().start(HAL::onUDiskEvent);
+    std::string testPath = "/mnt/UDISK/test.json";
+    int ret = inotify_.AddFileWatch(testPath, std::bind(&NotifyHandler));
+
     if (ret != 0)
     {
-        std::cerr << "Failed to start UDiskMonitor, error code: " << ret << std::endl;
+        log_debug("[xinotify] error, can not create inotify!");
     }
+    // // udisk设备监控启动
+    // int ret = UDiskMonitor::getInstance().start(HAL::onUDiskEvent);
+    // if (ret != 0)
+    // {
+    //     std::cerr << "Failed to start UDiskMonitor, error code: " << ret << std::endl;
+    // }
 
     for (;;)
     {

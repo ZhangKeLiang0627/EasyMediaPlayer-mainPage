@@ -3,8 +3,10 @@
 
 #include <string>
 #include <mutex>
+#include <vector>
 #include <functional>
 #include <libudev.h>
+#include "../utils/xepoll/xinotify.h"
 
 /**
  * @brief U盘事件回调函数类型
@@ -15,7 +17,7 @@
 using UDiskEventCallback = std::function<void(const std::string &, const std::string &, const std::string &)>;
 
 /**
- * @brief U盘热插拔监控类
+ * @brief U盘热插拔监控类（inotify + epoll + udev）
  * 功能：实时监控U盘插入/拔出事件，进程启动时扫描已存在的U盘
  */
 class UDiskMonitor
@@ -52,10 +54,9 @@ private:
     ~UDiskMonitor();
 
     /**
-     * @brief 处理epoll触发的udev事件（静态回调）
-     * @param fd 触发事件的文件描述符
+     * @brief 处理inotify事件（目录变化回调）
      */
-    static void handleUdevEvent(int fd);
+    void handleBlockDirChangedEvent();
 
     /**
      * @brief 扫描系统中已存在的U盘设备（进程启动时调用）
@@ -64,10 +65,10 @@ private:
 
     /**
      * @brief 判断设备是否为USB设备
-     * @param dev udev设备对象
-     * @return true：是USB设备，false：不是
+     * @return true / false
      */
     bool isUsbDevice(udev_device *dev);
+    bool isUsbDevice(const std::string &devName);
 
     /**
      * @brief 获取设备的挂载点（从/proc/mounts读取）
@@ -76,12 +77,11 @@ private:
      */
     std::string getMountPoint(const std::string &devNode);
 
-    udev *udevContext_ = nullptr;         // udev上下文
-    udev_monitor *udevMonitor_ = nullptr; // udev监控器
-    int udevFd_ = -1;                     // 监控器文件描述符
-    UDiskEventCallback eventCallback_;    // 事件回调函数
-
-    static std::mutex instanceMutex_; // 线程安全锁
+    Xinotify inotify_;                     // inotify监控器
+    udev *udevContext_ = nullptr;          // udev上下文
+    UDiskEventCallback eventCallback_;     // 事件回调函数
+    std::vector<std::string> watchedDevs_; // 监控设备列表
+    std::mutex mutex_;                     // 线程安全锁
 };
 
 #endif // UDISK_MONITOR_H

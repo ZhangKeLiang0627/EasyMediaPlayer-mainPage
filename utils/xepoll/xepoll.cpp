@@ -22,16 +22,19 @@ Epoll::Epoll(void) : epoll_loop_(true)
     readable_map_.clear();
     witable_map_.clear();
 
-    loop_thread_ = std::thread([](Epoll * p_this) { p_this->EpollLoop(); }, this);
+    loop_thread_ = std::thread([](Epoll *p_this)
+                               { p_this->EpollLoop(); }, this);
 }
 
 Epoll::~Epoll(void)
 {
-    if(loop_thread_.joinable()) {
+    if (loop_thread_.joinable())
+    {
         loop_thread_.join();
     }
     // EpoolQuit();
-    if(epfd_ > 0) {
+    if (epfd_ > 0)
+    {
         close(epfd_);
     }
 }
@@ -43,7 +46,8 @@ int Epoll::EpollAddRead(int fd, std::function<void(int)> read_handler)
 #if defined(__unix__) || defined(__APPLE__)
     // 设置为非阻塞
     int sta = fcntl(fd, F_GETFD, 0) | O_NONBLOCK;
-    if(fcntl(fd, F_SETFL, sta) < 0) {
+    if (fcntl(fd, F_SETFL, sta) < 0)
+    {
         return -1;
     }
 #endif
@@ -53,7 +57,7 @@ int Epoll::EpollAddRead(int fd, std::function<void(int)> read_handler)
     return kevent(epfd_, &event, 1, nullptr, 0, nullptr);
 #elif defined(__linux__)
     ev_.data.fd = fd;
-    ev_.events  = EPOLLIN;
+    ev_.events = EPOLLIN;
     // ev_.events  = EPOLLIN | EPOLLET;
     return epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev_);
 #elif defined(_WIN32) || defined(_WIN64)
@@ -68,7 +72,8 @@ int Epoll::EpollAddWrite(int fd, std::function<void(int)> write_handler)
 #if defined(__unix__) || defined(__APPLE__)
     // 设置为非阻塞
     int sta = ::fcntl(fd, F_GETFD, 0) | O_NONBLOCK;
-    if(::fcntl(fd, F_SETFL, sta) < 0) {
+    if (::fcntl(fd, F_SETFL, sta) < 0)
+    {
         return -1;
     }
 #endif
@@ -78,7 +83,7 @@ int Epoll::EpollAddWrite(int fd, std::function<void(int)> write_handler)
     return kevent(epfd_, &event, 1, nullptr, 0, nullptr);
 #elif defined(__linux__)
     ev_.data.fd = fd;
-    ev_.events  = EPOLLOUT;
+    ev_.events = EPOLLOUT;
     return ::epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev_);
 #elif defined(_WIN32) || defined(_WIN64)
     return 0;
@@ -89,11 +94,12 @@ int Epoll::EpollAddWrite(int fd, std::function<void(int)> write_handler)
 int Epoll::EpollAddReadWrite(int fd, std::function<void(int)> read_handler, std::function<void(int)> write_handler)
 {
     readable_map_[fd] = read_handler;
-    witable_map_[fd]  = write_handler;
+    witable_map_[fd] = write_handler;
 #if defined(__unix__) || defined(__APPLE__)
     // 设置为非阻塞
     int sta = ::fcntl(fd, F_GETFD, 0) | O_NONBLOCK;
-    if(::fcntl(fd, F_SETFL, sta) < 0) {
+    if (::fcntl(fd, F_SETFL, sta) < 0)
+    {
         return -1;
     }
 #endif
@@ -106,7 +112,7 @@ int Epoll::EpollAddReadWrite(int fd, std::function<void(int)> read_handler, std:
 
 #elif defined(__linux__)
     ev_.data.fd = fd;
-    ev_.events  = EPOLLIN | EPOLLOUT;
+    ev_.events = EPOLLIN | EPOLLOUT;
     return ::epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev_);
 #elif defined(_WIN32) || defined(_WIN64)
     return 0;
@@ -115,7 +121,8 @@ int Epoll::EpollAddReadWrite(int fd, std::function<void(int)> read_handler, std:
 
 int Epoll::EpollDel(int fd)
 {
-    if(fd < 0) {
+    if (fd < 0)
+    {
         return -1;
     }
 #if defined(__APPLE__)
@@ -130,10 +137,12 @@ int Epoll::EpollDel(int fd)
 #endif
     int ret = 0;
     // erase: 0 不存在元素 1 存在元素
-    if(witable_map_.count(fd)) {
+    if (witable_map_.count(fd))
+    {
         witable_map_.erase(fd);
     }
-    if(readable_map_.count(fd)) {
+    if (readable_map_.count(fd))
+    {
         ret |= readable_map_.erase(fd);
     }
 
@@ -142,7 +151,8 @@ int Epoll::EpollDel(int fd)
 
 int Epoll::EpollDelWrite(int fd)
 {
-    if(fd < 0) {
+    if (fd < 0)
+    {
         return -1;
     }
 #if defined(__APPLE__)
@@ -175,59 +185,76 @@ bool Epoll::EpoolQuit()
 
 int Epoll::EpollLoop()
 {
-    int nfds        = 0;
-    while(epoll_loop_) {
+    int nfds = 0;
+    while (epoll_loop_)
+    {
 
-        std::cout << "[xepoll] epoll_loop_ begin" << std::endl;
+        // std::cout << "[xepoll] epoll_loop_ begin" << std::endl;
 
 #if defined(__APPLE__)
         struct timespec timeout;
-        timeout.tv_sec  = 1;
+        timeout.tv_sec = 1;
         timeout.tv_nsec = 0;
-        nfds        = kevent(epfd_, nullptr, 0, events_, MAXEVENTS, &timeout);
+        nfds = kevent(epfd_, nullptr, 0, events_, MAXEVENTS, &timeout);
 #elif defined(__linux__)
         nfds = epoll_wait(epfd_, events_, MAXEVENTS, 1000);
 #endif
 
-        if(nfds == -1) {
+        if (nfds == -1)
+        {
             EpoolQuit();
         }
 
-        if(nfds == 0) {
+        if (nfds == 0)
+        {
             // std::cout << "Epoll time out" << std::endl;
             // spdlog::info("{} time out", __FUNCTION__);
             continue;
         }
 
-        for(int i = 0; i < nfds; i++) {
+        for (int i = 0; i < nfds; i++)
+        {
             // 有消息可读取
 #if defined(__APPLE__)
-            struct kevent event = events_[i];                 // 一个个取出已经就绪的事件
-            int fd              = (int)(intptr_t)event.udata; // 从附加数据里面取回文件描述符的值
-            if(event.filter == EVFILT_READ) {
+            struct kevent event = events_[i];    // 一个个取出已经就绪的事件
+            int fd = (int)(intptr_t)event.udata; // 从附加数据里面取回文件描述符的值
+            if (event.filter == EVFILT_READ)
+            {
                 // std::cout << "read data from fd:" << fd << std::endl;
                 auto handle_it = readable_map_.find(fd);
-                if(handle_it != readable_map_.end()) {
+                if (handle_it != readable_map_.end())
+                {
                     handle_it->second(fd);
-                } else {
+                }
+                else
+                {
                     std::cout << "can not find the fd:" << fd << std::endl;
                 }
-            } else if(event.filter == EVFILT_WRITE) {
+            }
+            else if (event.filter == EVFILT_WRITE)
+            {
                 std::cout << "write data to fd:" << fd << std::endl;
-            } else {
+            }
+            else
+            {
                 assert("unknown event");
             }
 #elif defined(__linux__)
-            if(events_[i].events & EPOLLIN) {
+            if (events_[i].events & EPOLLIN)
+            {
                 // 在map中寻找对应的回调函数
                 auto handle_it = readable_map_.find(events_[i].data.fd);
-                if(handle_it != readable_map_.end()) {
+                if (handle_it != readable_map_.end())
+                {
                     handle_it->second(events_[i].data.fd);
                 }
                 // readable_map_[events_[i].data.fd]();
-            } else if(events_[i].events & EPOLLOUT) {
+            }
+            else if (events_[i].events & EPOLLOUT)
+            {
                 auto handle_it = witable_map_.find(events_[i].data.fd);
-                if(handle_it != witable_map_.end()) {
+                if (handle_it != witable_map_.end())
+                {
                     handle_it->second(events_[i].data.fd);
                 }
                 // 移除
