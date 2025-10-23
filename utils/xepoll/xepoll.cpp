@@ -178,7 +178,7 @@ int Epoll::EpollLoop()
     int nfds        = 0;
     while(epoll_loop_) {
 
-        std::cout << "[xepoll] epoll_loop_ begin" << std::endl;
+        // std::cout << "[xepoll] epoll_loop_ begin" << std::endl;
 
 #if defined(__APPLE__)
         struct timespec timeout;
