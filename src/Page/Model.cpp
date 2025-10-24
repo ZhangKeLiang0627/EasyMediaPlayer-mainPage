@@ -383,7 +383,7 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
 
         sprintf(exec, "./%s", info.exec.c_str());
         sprintf(icon, "%spicture/icon/%s", getExeDirectory().c_str(), info.icon.c_str());
-        printf("[Model] icon: %s\n", icon);
+        printf("[Model] exec: %s, icon: %s\n", exec, icon);
 
         argv = stringToArgv(exec, info.argv);
 
