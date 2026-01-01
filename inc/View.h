@@ -38,6 +38,7 @@ namespace Page
             {
                 lv_obj_t *cont;
                 lv_obj_t *screenshotBtn;
+                lv_obj_t *udiskBtn;
 
                 lv_obj_t *titleLabel;
             } topCont;
@@ -52,6 +53,7 @@ namespace Page
         void appearAnimStart(bool reverse = false);
         void appearAnimClick(bool reverse = false);
         void addApplication(const char *name, const char *exec, char *const argv[], void *icon);
+        void setUdisk(bool isAppear);
 
     private:
         void topContCreate(lv_obj_t *obj);

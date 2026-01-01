@@ -29,6 +29,7 @@ extern "C"
         IMPORT_IMG(bootlogo);
         IMPORT_IMG(lawyer_close);
         IMPORT_IMG(lawyer_open);
+        IMPORT_IMG(udisk_on);
     }
 
 } /* extern "C" */

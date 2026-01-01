@@ -162,8 +162,15 @@ void View::topContCreate(lv_obj_t *obj)
     lv_obj_align(titleLabel, LV_ALIGN_CENTER, 0, 0);
     lv_label_set_text(titleLabel, "Main");
     // lv_obj_set_size(titleLabel, lv_pct(60), LV_SIZE_CONTENT);
-
     ui.topCont.titleLabel = titleLabel;
+
+    lv_obj_t *udiskBtn = btnCreate(cont, ResourcePool::GetImage("udisk_on"), 0, 0, 40, 30);
+    lv_obj_align(udiskBtn, LV_ALIGN_TOP_RIGHT, -5, 4);
+    lv_obj_clear_flag(udiskBtn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_color(udiskBtn, lv_color_hex(0xd6def2), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(udiskBtn, lv_color_hex(0xd6def2), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(udiskBtn, lv_color_hex(0xd6def2), LV_STATE_FOCUSED);
+    ui.topCont.udiskBtn = udiskBtn;
 }
 
 lv_obj_t *View::btnCreate(lv_obj_t *par, const void *img_src, lv_coord_t x_ofs, lv_coord_t y_ofs, lv_coord_t w, lv_coord_t h)
@@ -325,6 +332,18 @@ void View::addApplication(const char *name, const char *exec, char *const argv[]
     lv_obj_set_user_data(btn, execFile);
     lv_obj_add_event_cb(btn, applicationEventHandler, LV_EVENT_ALL, this);
     // ui.btnCont.btn = btn;
+}
+
+/**
+ * @brief 设置U盘图标是否出现
+ * @param isAppear 是否出现
+ */
+void View::setUdisk(bool isAppear)
+{
+    if(isAppear)
+        lv_obj_clear_flag(ui.topCont.udiskBtn, LV_OBJ_FLAG_HIDDEN);
+    else
+        lv_obj_add_flag(ui.topCont.udiskBtn, LV_OBJ_FLAG_HIDDEN);
 }
 
 /**

@@ -5,6 +5,7 @@
 #include "../utils/cJSON/cJSON.h"
 #include "ResourcePool.h"
 
+
 static const char *configNumberItemName[] =
     {
         "brightness",
