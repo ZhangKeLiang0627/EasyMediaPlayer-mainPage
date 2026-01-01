@@ -40,12 +40,14 @@ namespace Page
 
         View _view; // View的实例
         Xinotify _inotify;
+        lv_timer_t *_timer;
 
     private:
         /**
          * @brief LVGL处理线程
          */
-        void threadLvglHandler(void);
+        void
+        threadLvglHandler(void);
         /**
          * @brief data处理线程
          */
@@ -57,6 +59,9 @@ namespace Page
         bool readConfig(void);
         void saveConfig(void);
         void udiskNotifyDirHandler(const std::string &path);
+        
+        void update(void);
+        static void onTimerUpdate(lv_timer_t *timer);
 
     public:
         Model(std::function<void(void)> exitCb);

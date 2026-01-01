@@ -49,7 +49,7 @@ Model::Model(std::function<void(void)> exitCb)
 
     std::string udiskPath = "/mnt/exUDISK";
     int ret = _inotify.AddDirWatch(udiskPath, std::bind(&Page::Model::udiskNotifyDirHandler, this, std::placeholders::_1));
-    if(ret != true)
+    if (ret != true)
     {
         log_error("[xinotify] error, can not create inotify for %s", udiskPath.c_str());
     }
@@ -58,6 +58,9 @@ Model::Model(std::function<void(void)> exitCb)
 
     /* 创建UI */
     _view.create();
+
+    // 这里设置一个1000ms的定时器，软定时器，用于在onTimerUpdate里update
+    _timer = lv_timer_create(onTimerUpdate, 1000, this);
 
     // 创建lvgl处理线程，传递this指针
     _threadLvgl = std::thread([](Model *pThis)
@@ -85,8 +88,30 @@ Model::~Model()
     }
 
     _view.release();
+    lv_timer_del(_timer);
 
     log_info("[Model] ~Model exit!");
+}
+
+/**
+ * @brief 定时器更新函数
+ *
+ */
+void Model::onTimerUpdate(lv_timer_t *timer)
+{
+    Model *instance = (Model *)timer->user_data;
+
+    instance->update();
+}
+
+/**
+ * @brief 更新UI等事务
+ *
+ */
+void Model::update(void)
+{
+    // 轮询U盘挂载情况
+    _view.setUdisk(isMounted("/mnt/exUDISK"));
 }
 
 /**
