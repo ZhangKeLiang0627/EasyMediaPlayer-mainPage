@@ -3,9 +3,10 @@
 #include <dirent.h>
 #include <vector>
 
-#include "../libs/lvgl/lvgl.h"
-#include "common_inc.h"
 #include "View.h"
+#include "common_inc.h"
+#include "../libs/lvgl/lvgl.h"
+#include "../utils/xepoll/xinotify.h"
 
 namespace Page
 {
@@ -38,6 +39,7 @@ namespace Page
         int _legalConfigAppNum;                   // 配置文件有效的app个数
 
         View _view; // View的实例
+        Xinotify _inotify;
 
     private:
         /**
@@ -54,6 +56,7 @@ namespace Page
         static char **stringToArgv(const char *exec, std::string &str);
         bool readConfig(void);
         void saveConfig(void);
+        void udiskNotifyDirHandler(const std::string &path);
 
     public:
         Model(std::function<void(void)> exitCb);
@@ -61,5 +64,6 @@ namespace Page
 
         // 获取当前可执行文件所在路径
         static std::string getExeDirectory(void);
+        static bool isMounted(const char *mount_point);
     };
 }

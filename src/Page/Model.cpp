@@ -1,10 +1,13 @@
 #include "Model.h"
 #include <sys/wait.h>
 #include <fstream>
-#include "httplib.h"
-#include "../utils/cJSON/cJSON.h"
-#include "ResourcePool.h"
+#include <stdio.h>
+#include <string.h>
+#include <mntent.h>
 
+#include "httplib.h"
+#include "ResourcePool.h"
+#include "../utils/cJSON/cJSON.h"
 
 static const char *configNumberItemName[] =
     {
@@ -44,6 +47,12 @@ Model::Model(std::function<void(void)> exitCb)
 
     _view.setOperations(uiOpts);
 
+    std::string udiskPath = "/mnt/exUDISK";
+    int ret = _inotify.AddDirWatch(udiskPath, std::bind(&Page::Model::udiskNotifyDirHandler, this, std::placeholders::_1));
+    if(ret != true)
+    {
+        log_error("[xinotify] error, can not create inotify for %s", udiskPath.c_str());
+    }
     /* Initialize resource pool */
     ResourcePool::Init();
 
@@ -396,3 +405,44 @@ void Model::installApplications(std::vector<AppInfo> &appVector)
     }
 }
 
+void Model::udiskNotifyDirHandler(const std::string &path)
+{
+    log_debug("[xinotify] exUDISK dir content is changed");
+}
+
+/**
+ * @brief 判断指定路径是否已挂载
+ * @param mount_point 待检查的挂载点（如/mnt/exUDISK）
+ * @return true-已挂载，false-未挂载
+ */
+bool Model::isMounted(const char *mount_point)
+{
+    if (!mount_point || strlen(mount_point) == 0)
+    {
+        return false;
+    }
+
+    // 打开/proc/mounts（内核实时挂载表）
+    FILE *mnt_fp = setmntent("/proc/mounts", "r");
+    if (!mnt_fp)
+    {
+        perror("setmntent failed");
+        return false;
+    }
+
+    struct mntent *mnt_entry = nullptr;
+    bool mounted = false;
+
+    // 遍历挂载表，匹配挂载点
+    while ((mnt_entry = getmntent(mnt_fp)) != nullptr)
+    {
+        if (strcmp(mnt_entry->mnt_dir, mount_point) == 0)
+        {
+            mounted = true;
+            break;
+        }
+    }
+
+    endmntent(mnt_fp); // 关闭文件
+    return mounted;
+}

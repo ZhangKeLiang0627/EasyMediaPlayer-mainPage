@@ -19,7 +19,8 @@ Xinotify::Xinotify()
 {
 #if defined(__linux__)
     inotify_fd_ = inotify_init();
-    if (inotify_fd_ < 0) {
+    if (inotify_fd_ < 0)
+    {
         fprintf(stderr, "inotify_init failed\n");
     }
     assert(inotify_fd_ > 0);
@@ -31,9 +32,11 @@ Xinotify::Xinotify()
 Xinotify::~Xinotify()
 {
 #if defined(__linux__)
-    if (inotify_fd_ > 0) {
+    if (inotify_fd_ > 0)
+    {
         MY_EPOLL.EpollDel(inotify_fd_);
-        for (auto wds : file_watch_fd_map_) {
+        for (auto wds : watch_fd_map_)
+        {
             inotify_rm_watch(inotify_fd_, wds.second);
         }
         close(inotify_fd_);
@@ -45,22 +48,27 @@ bool Xinotify::AddFileWatch(const std::string &path, std::function<void()> handl
 {
 #if defined(__linux__)
     // 保证文件存在
-    if (-1 == access(path.c_str(), F_OK)) {
+    if (-1 == access(path.c_str(), F_OK))
+    {
         fprintf(stderr, "file %s not exist, create it\n", path.c_str());
-        FILE * pFile = fopen (path.c_str(),"w");
-        if (pFile != nullptr) {
-            fclose (pFile);
+        FILE *pFile = fopen(path.c_str(), "w");
+        if (pFile != nullptr)
+        {
+            fclose(pFile);
         }
         // return false;
     }
 
     // IN_MODIFY 监控文件被修改
     int watch_fd = inotify_add_watch(inotify_fd_, path.c_str(), IN_ALL_EVENTS);
-    if (watch_fd < 0) {
+    if (watch_fd < 0)
+    {
         fprintf(stderr, "inotify_add_watch %s failed\n", path.c_str());
         return false;
-    } else {
-        file_watch_fd_map_[path]         = watch_fd;
+    }
+    else
+    {
+        watch_fd_map_[path] = watch_fd;
         listeners_file_change_[watch_fd] = handler;
     }
 #endif
@@ -71,11 +79,56 @@ bool Xinotify::AddFileWatch(const std::string &path, std::function<void()> handl
 bool Xinotify::DelFileWatch(const std::string &path)
 {
 #if defined(__linux__)
-    if (file_watch_fd_map_.count(path)) {
-        inotify_rm_watch(inotify_fd_, file_watch_fd_map_[path]);
-        listeners_file_change_.erase(file_watch_fd_map_[path]);
-        file_watch_fd_map_.erase(path);
+    if (watch_fd_map_.count(path))
+    {
+        inotify_rm_watch(inotify_fd_, watch_fd_map_[path]);
+        listeners_file_change_.erase(watch_fd_map_[path]);
+        watch_fd_map_.erase(path);
         std::cout << "Remove file from watch " << path << std::endl;
+        return true;
+    }
+#endif
+    return false;
+}
+
+bool Xinotify::AddDirWatch(const std::string &path, std::function<void(const std::string &)> handler)
+{
+#if defined(__linux__)
+    // 检查目录是否存在
+    struct stat st;
+    if (stat(path.c_str(), &st) == -1 || !S_ISDIR(st.st_mode))
+    {
+        fprintf(stderr, "dir %s not exist or not a directory\n", path.c_str());
+        return false;
+    }
+
+    // 监控目录下的创建、删除、移动等事件
+    int watch_fd = inotify_add_watch(inotify_fd_, path.c_str(), IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
+    if (watch_fd < 0)
+    {
+        fprintf(stderr, "inotify_add_watch dir %s failed\n", path.c_str());
+        return false;
+    }
+    else
+    {
+        watch_fd_map_[path] = watch_fd;                    // 复用现有映射存储watch_fd
+        listeners_dir_change_[watch_fd] = {path, handler}; // 存储目录路径和回调
+    }
+#endif
+    std::cout << "Inotify add dir watch " << path << std::endl;
+    return true;
+}
+
+bool Xinotify::DelDirWatch(const std::string &path)
+{
+#if defined(__linux__)
+    if (watch_fd_map_.count(path))
+    {
+        int watch_fd = watch_fd_map_[path];
+        inotify_rm_watch(inotify_fd_, watch_fd);
+        listeners_dir_change_.erase(watch_fd); // 移除目录监听器
+        watch_fd_map_.erase(path);             // 复用现有映射删除
+        std::cout << "Remove dir from watch " << path << std::endl;
         return true;
     }
 #endif
@@ -89,33 +142,54 @@ int Xinotify::HandleEvent()
     struct inotify_event *event;
     int event_size = sizeof(struct inotify_event);
 
-    // 检测事件是否发生，没有发生就会阻塞
+    // 读取事件（非阻塞，因为fd已被设置为非阻塞模式）
     int read_len = read(inotify_fd_, buf, sizeof(buf));
-    // std::cout << "Handle event " << buf << std::endl;
+    if (read_len < 0)
+    {
+        printf("read inotify event failed\n");
+        return -1;
+    }
 
     // 如果read的返回值，小于inotify_event大小出现错误
-    if (read_len < event_size) {
-        printf("could not get event!\n");
+    if (read_len < event_size)
+    {
+        printf("could not get valid event\n");
         return -1;
     }
 
     // 因为read的返回值存在一个或者多个inotify_event对象，需要一个一个取出来处理
     int pos = 0;
-    while (read_len >= event_size) {
+    while (read_len >= event_size)
+    {
         event = (struct inotify_event *)(buf + pos);
-        // std::cout << "Event len " << event->len << std::endl;
-        // std::cout << "Event mask " << event->mask << std::endl;
-        // if (event->len) {
-            if (event->mask & IN_CLOSE_WRITE) {
-                // printf("Modify file: %s\n", event->name);
-                auto handle_it = listeners_file_change_.find(event->wd);
-                if (handle_it != listeners_file_change_.end()) {
-                    handle_it->second();
-                }
-            }
-        // }
 
+        if (event->mask & IN_CLOSE_WRITE)
+        {
+            auto handle_it = listeners_file_change_.find(event->wd);
+            if (handle_it != listeners_file_change_.end())
+            {
+                handle_it->second();
+            }
+        }
+
+        // 处理目录事件
+        if (event->mask & (IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO))
+        {
+            auto dir_it = listeners_dir_change_.find(event->wd);
+            if (dir_it != listeners_dir_change_.end())
+            {
+                // 拼接完整路径（目录+文件名）
+                std::string full_path = dir_it->second.first;
+                if (!full_path.empty() && full_path.back() != '/')
+                {
+                    full_path += "/";
+                }
+                full_path += event->name;
+                dir_it->second.second(full_path); // 调用目录事件回调
+            }
+        }
         // 一个事件的真正大小：inotify_event 结构体所占用的空间 + inotify_event->name 所占用的空间
+        // 移动到下一个事件
         int temp_size = event_size + event->len;
         read_len -= temp_size;
         pos += temp_size;
