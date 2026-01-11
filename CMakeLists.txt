@@ -43,7 +43,7 @@ find_package(PkgConfig REQUIRED)
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64")
     message(STATUS "Local-compilation 💻")
     
-    # set(LV_DRIVERS_USE_WAYLAND ON CACHE BOOL "Enable Wayland for local build")
+    set(LV_DRIVERS_USE_WAYLAND ON CACHE BOOL "Enable Wayland for local build")
 
     # 添加本地编译宏定义
     add_definitions(-DLV_USE_DRAW_SDL=0 -DUSE_SDL=1 -DUSE_MOUSE=1)
