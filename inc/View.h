@@ -27,6 +27,7 @@ namespace Page
         {
             lv_obj_t *cont;
             lv_obj_t *image;
+            lv_obj_t *timeLabel;
 
             struct
             {

@@ -30,6 +30,18 @@ void View::create(void)
     lv_obj_align(cont, LV_ALIGN_CENTER, 0, 0);
     ui.cont = cont;
 
+    lv_obj_t *timeLabel = lv_label_create(cont);
+    lv_obj_remove_style_all(timeLabel);
+    lv_obj_set_style_text_font(timeLabel, &lv_font_montserrat_48, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(timeLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_color(timeLabel, lv_color_white(), 0);
+    lv_label_set_long_mode(timeLabel, LV_LABEL_LONG_WRAP);
+    lv_obj_align(timeLabel, LV_ALIGN_TOP_LEFT, 25, 50);
+    lv_label_set_text_fmt(timeLabel, "00:00:00");
+    // lv_obj_set_size(timeLabel, lv_pct(60), LV_SIZE_CONTENT);
+    ui.timeLabel = timeLabel;
+
+
     lv_obj_t *img = lv_obj_create(cont);
     lv_obj_remove_style_all(img);
     // lv_obj_set_style_bg_img_src(img, &img_src_bootlogo, 0);
