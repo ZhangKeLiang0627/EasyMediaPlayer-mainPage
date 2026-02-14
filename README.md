@@ -60,6 +60,9 @@ sudo apt install build-essential
 
 # SDL2库、Freetype
 sudo apt install libsdl2-dev libfreetype6-dev libncurses5-dev libstdc++6 
+
+# Plus: 如果cmake时遇到Wayland依赖找不到的情况时，请输入以下指令安装
+sudo apt install -y wayland-protocols libxkbcommon-dev
 ```
 
 ### 本地编译的文件依赖
