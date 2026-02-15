@@ -63,7 +63,7 @@ Model::Model(std::function<void(void)> exitCb)
     // 这里设置一个1000ms的定时器，软定时器，用于在onTimerUpdate里update
     _timer = lv_timer_create(onTimerUpdate, 1000, this);
     update();
-    
+
     // 创建lvgl处理线程，传递this指针
     _threadLvgl = std::thread([](Model *pThis)
                               { pThis->threadLvglHandler(); }, this);
@@ -118,9 +118,10 @@ void Model::update(void)
     // 更新时间
     auto now = std::chrono::system_clock::now();
     std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
-    std::tm local_tm{};
+    static std::tm local_tm{};
     localtime_r(&now_time_t, &local_tm);
-    lv_label_set_text_fmt(_view.ui.timeLabel, "%.2d:%.2d:%.2d", local_tm.tm_hour, local_tm.tm_min, local_tm.tm_sec);
+    lv_label_set_text_fmt(_view.ui.timeCont.timeLabel, "%.2d:%.2d:%.2d", local_tm.tm_hour, local_tm.tm_min, local_tm.tm_sec);
+    lv_label_set_text_fmt(_view.ui.timeCont.dateLabel, "%d/%d/%d", local_tm.tm_year + 1900, local_tm.tm_mon + 1, local_tm.tm_mday);
 }
 
 /**

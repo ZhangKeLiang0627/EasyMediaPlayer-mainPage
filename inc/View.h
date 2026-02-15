@@ -27,7 +27,14 @@ namespace Page
         {
             lv_obj_t *cont;
             lv_obj_t *image;
-            lv_obj_t *timeLabel;
+
+            struct
+            {
+                lv_obj_t *cont;
+                lv_obj_t *timeLabel;
+                lv_obj_t *dateLabel;
+
+            } timeCont;
 
             struct
             {
@@ -57,6 +64,7 @@ namespace Page
         void setUdisk(bool isAppear);
 
     private:
+        void timeContCreate(lv_obj_t *obj);
         void topContCreate(lv_obj_t *obj);
 
         static void onEvent(lv_event_t *event);
