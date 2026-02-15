@@ -33,6 +33,7 @@ namespace Page
         std::mutex _mutex;                        // 互斥量
         std::thread _threadLvgl;                  // lvgl线程
         std::thread _threadDataProc;              // 数据处理线程
+        std::thread _threadHttpSvr;              
         std::condition_variable _cv;              // 条件变量
         std::atomic<bool> _threadExitFlag{false}; // 线程退出标志位
         SysConfig _sysConfig;                     // 配置信息
@@ -52,6 +53,7 @@ namespace Page
          * @brief data处理线程
          */
         void threadDataProcHandler(void);
+        void threadHttpSvrHandler(void);
 
         void runApplication(const char *exec, char *const argv[]);
         void installApplications(std::vector<AppInfo> &appVector);

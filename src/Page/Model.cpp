@@ -73,6 +73,11 @@ Model::Model(std::function<void(void)> exitCb)
     _threadDataProc = std::thread([](Model *pThis)
                                   { pThis->threadDataProcHandler(); }, this);
 
+    // 创建httpsvr线程，传递this指针
+    _threadHttpSvr = std::thread([](Model *pThis)
+                                 { pThis->threadHttpSvrHandler(); }, this);
+    _threadHttpSvr.detach();
+
     // _cv.notify_all();
 }
 
@@ -145,14 +150,6 @@ void Model::threadLvglHandler(void)
  */
 void Model::threadDataProcHandler(void)
 {
-    httplib::Server svr;
-    svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
-            { res.set_content("Hello World!", "text/plain"); });
-    svr.set_logger([](const httplib::Request &req, const httplib::Response &res)
-                   { log_debug("%s %s -> %d", req.method.c_str(), req.path.c_str(), res.status); });
-
-    usleep(50000);
-
     // 读取配置文件
     if (readConfig() != true)
     {
@@ -165,14 +162,30 @@ void Model::threadDataProcHandler(void)
     installApplications(_sysConfig.appVector);
     lock.unlock();
 
-    svr.listen("0.0.0.0", 6210);
-
     while (!_threadExitFlag)
     {
         usleep(50000);
     }
 
     log_info("[Model] threadDataProcHandler exit!");
+}
+
+/**
+ * @brief 线程处理函数
+ */
+void Model::threadHttpSvrHandler(void)
+{
+    httplib::Server svr;
+    svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
+            { res.set_content("Hello World!", "text/plain"); });
+    svr.set_logger([](const httplib::Request &req, const httplib::Response &res)
+                   { log_debug("%s %s -> %d", req.method.c_str(), req.path.c_str(), res.status); });
+
+    usleep(50000);
+
+    svr.listen("0.0.0.0", 6210);
+
+    log_info("[Model] threadHttpSvrHandler exit!");
 }
 
 /**
