@@ -1,8 +1,8 @@
-#include <dirent.h>
 #include <fstream>
 #include <iostream>
 
 #include "httpServer.h"
+#include "../../utils/FileOperations/FileOperations.h"
 #include "../../utils/log/log.h"
 
 HttpServer::HttpServer()
@@ -51,30 +51,20 @@ void HttpServer::init()
     svr.set_file_extension_and_mimetype_mapping("zip", "application/zip");
     svr.set_file_extension_and_mimetype_mapping("txt", "text/plain");
 
-    // test
-    // svr.Get("/", [](const httplib::Request &, httplib::Response &res)
-    //         { res.set_content("Hello World!", "text/plain"); });
-
-    svr.Get("/", [this](const httplib::Request &, httplib::Response &res)
-            { res.set_content(this->html, "text/html"); });
-
-    svr.Get(R"(/numbers/(\d+))", [&](const httplib::Request &req, httplib::Response &res)
-            {
-    auto numbers = req.matches[1];
-    res.set_content(numbers, "text/plain"); });
-
-    svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
+    svr.Get("/", [](const httplib::Request &, httplib::Response &res)
             { res.set_content("Hello World!", "text/plain"); });
+
+    svr.Get("/upload", [this](const httplib::Request &, httplib::Response &res)
+            { res.set_content(this->htmlUpload, "text/html"); });
 
     svr.Post("/post", [](const httplib::Request &req, httplib::Response &res)
              {
     const auto &image_file = req.form.get_file("image_file");
     const auto &text_file = req.form.get_file("text_file");
 
-    std::cout << "image file length: " << image_file.content.length() << std::endl
-         << "image file name: " << image_file.filename << std::endl
-         << "text file length: " << text_file.content.length() << std::endl
-         << "text file name: " << text_file.filename << std::endl;
+    log_info("[Svr] image file: name=%s, length=%zu; text file: name=%s, length=%zu",
+             image_file.filename.c_str(), image_file.content.length(),
+             text_file.filename.c_str(), text_file.content.length());
 
     {
       std::ofstream ofs(image_file.filename, std::ios::binary);
@@ -133,11 +123,12 @@ void HttpServer::start(const std::string &host, int port)
 
 std::string HttpServer::generateDirListHtml(const std::string &current_url_path)
 {
-    // 核心优化：强制清理后的路径始终不带末尾/，且统一处理输入
     std::string clean_path = current_url_path;
-    // 移除所有首尾的/，确保路径格式统一（如 "/album/" → "album"，"" → ""）
     clean_path.erase(0, clean_path.find_first_not_of('/'));
-    clean_path.erase(clean_path.find_last_not_of('/') + 1);
+    if (!clean_path.empty())
+    {
+        clean_path.erase(clean_path.find_last_not_of('/') + 1);
+    }
 
     std::string html = R"(
     <!DOCTYPE html>
@@ -216,7 +207,6 @@ std::string HttpServer::generateDirListHtml(const std::string &current_url_path)
     <ul class="file-list">
     )";
 
-    // 核心修复：上级目录链接计算逻辑（确保一次点击就能到正确上级）
     if (!clean_path.empty())
     {
         std::string parent_url_path;
@@ -249,67 +239,132 @@ std::string HttpServer::generateDirListHtml(const std::string &current_url_path)
         )";
     }
 
-    // 目录遍历 - 路径拼接更严谨
+    // 拼接本地目录路径
     std::string current_actual_dir = "./www/";
     if (!clean_path.empty())
     {
         current_actual_dir += clean_path;
     }
-    // 确保本地目录路径末尾有/，避免拼接错误（如 ./wwwalbum → ./www/album/）
-    if (current_actual_dir.back() != '/')
+    // 确保本地目录路径末尾有/，避免拼接错误
+    if (!current_actual_dir.empty() && current_actual_dir.back() != '/')
     {
         current_actual_dir += "/";
     }
 
-    DIR *dir = opendir(current_actual_dir.c_str());
-    if (dir)
+    try
     {
-        dirent *entry;
-        while ((entry = readdir(dir)) != nullptr)
+        std::error_code ec;
+        // 1. 检查路径是否存在（通过 getFileType 判断是否为 NON_EXIST）
+        FileOperations::FileType path_type = FileOperations::getFileType(current_actual_dir, ec);
+        if (ec)
         {
-            std::string name = entry->d_name;
-            if (name == "." || name == "..")
-                continue;
+            html += R"(
+            <li class="item"><span style="color: #dc2626;">❌ 访问路径失败：)" +
+                    FileOperations::getErrorMessage(ec) + R"(</span></li>
+            )";
+            ec.clear();
+        }
+        // 2. 路径不存在
+        else if (path_type == FileOperations::FileType::NON_EXIST)
+        {
+            html += R"(
+            <li class="item"><span style="color: #dc2626;">❌ 路径不存在：)" +
+                    current_actual_dir + R"(</span></li>
+            )";
+        }
+        // 3. 路径不是目录
+        else if (path_type != FileOperations::FileType::DIRECTORY)
+        {
+            html += R"(
+            <li class="item"><span style="color: #dc2626;">❌ 不是有效的目录：)" +
+                    current_actual_dir + R"(</span></li>
+            )";
+        }
+        // 4. 遍历目录（使用 FileOperations::listDir）
+        else
+        {
+            std::vector<FileOperations::FileInfo> file_list;
+            // 遍历目录，不包含隐藏文件（隐藏文件以.开头）
+            bool list_success = FileOperations::listDir(current_actual_dir, file_list, false, ec);
 
-            // 拼接条目URL路径（基于clean_path，确保格式统一）
-            std::string entry_url_path = clean_path.empty() ? name : (clean_path + "/" + name);
-            std::string entry_actual_path = current_actual_dir + name;
-
-            struct stat entry_stat;
-            if (stat(entry_actual_path.c_str(), &entry_stat) == 0)
+            if (!list_success || ec)
             {
-                if (S_ISDIR(entry_stat.st_mode))
+                html += R"(
+                <li class="item"><span style="color: #dc2626;">❌ 遍历目录失败：)" +
+                        FileOperations::getErrorMessage(ec) + R"(</span></li>
+                )";
+                ec.clear();
+            }
+            else
+            {
+                // 遍历获取到的文件/目录列表
+                for (const auto &file_info : file_list)
                 {
-                    // 目录：URL强制带/，避免跳转后少/的问题
-                    std::string entry_url = "/public/" + entry_url_path + "/";
-                    html += R"(
-                    <li class="item">
-                        <span class="icon dir-icon">📁</span>
-                        <a href=")" +
-                            entry_url + R"(/">)" + name + R"(/</a>
-                    </li>
-                     )";
+                    // 跳过 . 和 ..（listDir 已过滤隐藏文件，这里双重保险）
+                    if (file_info.name == "." || file_info.name == "..")
+                    {
+                        continue;
+                    }
+
+                    // 拼接条目URL路径（基于clean_path，确保格式统一）
+                    std::string entry_url_path = clean_path.empty() ? file_info.name : (clean_path + "/" + file_info.name);
+
+                    if (file_info.type == FileOperations::FileType::DIRECTORY)
+                    {
+                        // 目录：URL强制带/，避免跳转后少/的问题
+                        std::string entry_url = "/public/" + entry_url_path + "/";
+                        html += R"(
+                        <li class="item">
+                            <span class="icon dir-icon">📁</span>
+                            <a href=")" +
+                                entry_url + R"(/">)" + file_info.name + R"(/</a>
+                        </li>
+                         )";
+                    }
+                    else if (file_info.type == FileOperations::FileType::FILE)
+                    {
+                        // 文件：URL不带/（正常逻辑）
+                        std::string entry_url = "/public/" + entry_url_path;
+                        html += R"(
+                        <li class="item">
+                            <span class="icon file-icon">📄</span>
+                            <a href=")" +
+                                entry_url + R"(">)" + file_info.name + R"(</a>
+                        </li>
+                        )";
+                    }
+                    else
+                    {
+                        // 符号链接/其他类型：按文件处理，标注类型
+                        std::string entry_url = "/public/" + entry_url_path;
+                        std::string type_label = (file_info.type == FileOperations::FileType::SYMLINK) ? "🔗 " : "📦 ";
+                        html += R"(
+                        <li class="item">
+                            <span class="icon file-icon">)" +
+                                type_label + R"(</span>
+                            <a href=")" +
+                                entry_url + R"(">)" + file_info.name + R"(</a>
+                        </li>
+                        )";
+                    }
                 }
-                else
+
+                // 若目录为空，提示空目录
+                if (file_list.empty())
                 {
-                    // 文件：URL不带/（正常逻辑）
-                    std::string entry_url = "/public/" + entry_url_path;
                     html += R"(
-                    <li class="item">
-                        <span class="icon file-icon">📄</span>
-                        <a href=")" +
-                            entry_url + R"(">)" + name + R"(</a>
-                    </li>
+                    <li class="item"><span style="color: #718096;">📂 该目录为空</span></li>
                     )";
                 }
             }
         }
-        closedir(dir);
     }
-    else
+    catch (const std::exception &e)
     {
+        // 捕获未知异常，避免程序崩溃
         html += R"(
-        <li class="item"><span style="color: #dc2626;">❌ 无法访问目录（权限不足或目录不存在）</span></li>
+        <li class="item"><span style="color: #dc2626;">❌ 未知错误：)" +
+                std::string(e.what()) + R"(</span></li>
         )";
     }
 
@@ -325,12 +380,12 @@ void HttpServer::loadHTML(std::string &target)
 {
     if (!target.empty())
     {
-        this->html.clear();
-        this->html = target;
+        this->htmlUpload.clear();
+        this->htmlUpload = target;
     }
     else
     {
-        this->html = R"(
+        this->htmlUpload = R"(
         <!DOCTYPE html>
         <html lang="en">
         <head>

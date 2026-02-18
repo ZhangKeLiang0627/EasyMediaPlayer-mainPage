@@ -12,7 +12,7 @@ public:
 
 private:
     httplib::Server svr;
-    std::string html;
+    std::string htmlUpload;
 
 public:
     void init();
