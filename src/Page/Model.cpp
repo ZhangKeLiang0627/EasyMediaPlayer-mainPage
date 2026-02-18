@@ -7,6 +7,7 @@
 #include <chrono>
 
 #include "httplib.h"
+#include "httpServer.h"
 #include "ResourcePool.h"
 #include "../utils/cJSON/cJSON.h"
 
@@ -175,15 +176,13 @@ void Model::threadDataProcHandler(void)
  */
 void Model::threadHttpSvrHandler(void)
 {
-    httplib::Server svr;
-    svr.Get("/hi", [](const httplib::Request &, httplib::Response &res)
-            { res.set_content("Hello World!", "text/plain"); });
-    svr.set_logger([](const httplib::Request &req, const httplib::Response &res)
-                   { log_debug("%s %s -> %d", req.method.c_str(), req.path.c_str(), res.status); });
+    HttpServer svr;
 
-    usleep(50000);
+    svr.init();
 
-    svr.listen("0.0.0.0", 6210);
+    log_info("[Model] threadHttpSvrHandler start!");
+
+    svr.getHttpServer().listen("0.0.0.0", 6210);
 
     log_info("[Model] threadHttpSvrHandler exit!");
 }
