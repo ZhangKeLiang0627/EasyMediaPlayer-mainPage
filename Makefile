@@ -31,6 +31,9 @@ ifeq ($(CROSS), 1)
     LDFLAGS ?= -lm
     CXXFLAGS ?= $(CFLAGS) -std=c++11
 
+    # lodepng 截图：C++ 中只声明、不内联编译实现（实现由 lvgl 的 lodepng.c 提供）
+    CFLAGS += -DLODEPNG_NO_COMPILE_CPP
+
     # 头文件路径
     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include
     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/include/allwinner
@@ -39,14 +42,16 @@ ifeq ($(CROSS), 1)
     CFLAGS += -I$(PROJECT_DIR)/utils
     CFLAGS += -I/home/hugokkl/tina-sdk/out/t113-pi/compile_dir/target/freetype-2.13.2/include
     CFLAGS += -I$(PROJECT_DIR)/libs/spdlog/include
+    CFLAGS += -I$(PROJECT_DIR)/libs
+    CFLAGS += -I$(PROJECT_DIR)/libs/cpp-httplib
 
     # 架构相关参数
     CFLAGS += -pipe -march=armv7-a -mtune=cortex-a7 -mfpu=neon -mfloat-abi=hard -fstack-protector  
 
-    # 链接选项
+    # 链接选项（去掉媒体播放器专用库 tplayer/cdx_base；freetype 需要 zlib/bzip2）
     LDFLAGS += -L/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/lib
     LDFLAGS += -L/home/hugokkl/tina-sdk/out/t113-pi/staging_dir/target/usr/lib  
-    LDFLAGS += -ltplayer -lcdx_base -lncurses -lpthread -lstdc++ -lfreetype -lstdc++fs 
+    LDFLAGS += -lncurses -lpthread -lstdc++ -lfreetype -lstdc++fs -lz -lbz2
 
     # 源文件收集
     MAINSRC += ./main.cpp
@@ -89,10 +94,15 @@ else
 	CFLAGS += -DLV_USE_DRAW_SDL=0 -DUSE_SDL=1 -DUSE_MOUSE=1
     CXXFLAGS ?= $(CFLAGS) -std=c++11
 
+    # lodepng 截图：C++ 中只声明、不内联编译实现（实现由 lvgl 的 lodepng.c 提供）
+    CFLAGS += -DLODEPNG_NO_COMPILE_CPP
+
     # 头文件路径
     CFLAGS += -I$(PROJECT_DIR)/inc
     CFLAGS += -I$(PROJECT_DIR)/utils
     CFLAGS += -I$(PROJECT_DIR)/libs/spdlog/include
+    CFLAGS += -I$(PROJECT_DIR)/libs
+    CFLAGS += -I$(PROJECT_DIR)/libs/cpp-httplib
     CFLAGS += -I/usr/include/freetype2
     CFLAGS += $(shell pkg-config --cflags sdl2)
 

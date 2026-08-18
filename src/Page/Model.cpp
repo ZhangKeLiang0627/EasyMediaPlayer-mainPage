@@ -5,11 +5,21 @@
 #include <string.h>
 #include <mntent.h>
 #include <chrono>
+#include <sys/stat.h>
 
 #include "httplib.h"
 #include "httpServer.h"
 #include "ResourcePool.h"
-#include "../utils/cJSON/cJSON.h"
+#include "Launch/desktop_entry.h"
+#include "Launch/app_scanner.h"
+#include "Launch/app_runner.h"
+#include <nlohmann/json.hpp>
+
+#if defined(__arm__) || defined(__aarch64__)
+#include "TimeSync.h"
+#endif
+
+using nlohmann::json;
 
 static const char *configNumberItemName[] =
     {
@@ -28,6 +38,9 @@ static const char *appInfoItemName[] =
 
 #define CONFIG_DIR "./config/"
 #define CONFIG_FILE "sysconfig.json"
+#define APPS_DIR "/mnt/UDISK/applications"  // .desktop 应用描述目录
+#define TIME_SYNC_INTERVAL_SEC 60           // 板子周期对时间隔
+#define INOTIFY_POLL_US 200000              // inotify 事件轮询间隔（200ms）
 
 using namespace Page;
 
@@ -49,12 +62,23 @@ Model::Model(std::function<void(void)> exitCb)
 
     _view.setOperations(uiOpts);
 
+    // 监听 U 盘挂载点（图标显隐用）
     std::string udiskPath = "/mnt/exUDISK";
     int ret = _inotify.AddDirWatch(udiskPath, std::bind(&Page::Model::udiskNotifyDirHandler, this, std::placeholders::_1));
     if (ret != true)
     {
         log_error("[xinotify] error, can not create inotify for %s", udiskPath.c_str());
     }
+
+    // 监听 .desktop 应用描述目录（插 U 盘 / 拷入新应用自动发现）
+    _appsDir = APPS_DIR;
+    mkdir(_appsDir.c_str(), 0777); // 目录不存在则创建（inotify 要求目录存在）
+    ret = _inotify.AddDirWatch(_appsDir, std::bind(&Page::Model::appsNotifyDirHandler, this, std::placeholders::_1));
+    if (ret != true)
+    {
+        log_error("[xinotify] error, can not create inotify for %s", _appsDir.c_str());
+    }
+
     /* Initialize resource pool */
     ResourcePool::Init();
 
@@ -158,14 +182,28 @@ void Model::threadDataProcHandler(void)
         saveConfig();
     }
 
-    // Initialize Appalication
+    // Initialize Appalication（.desktop 优先 + sysconfig 兜底合并）
     std::unique_lock<std::mutex> lock(_mutex);
-    installApplications(_sysConfig.appVector);
+    installApplications();
     lock.unlock();
+
+    uint32_t timeSyncCountdown = TIME_SYNC_INTERVAL_SEC;
 
     while (!_threadExitFlag)
     {
-        usleep(50000);
+        usleep(INOTIFY_POLL_US);
+
+        // 消费 inotify 事件（非阻塞），触发 appsNotifyDirHandler 自动发现
+        _inotify.HandleEvent();
+
+#if defined(__arm__) || defined(__aarch64__)
+        // 板子无 RTC，每 60s 周期对时（main() 里已启动对时一次）
+        if (--timeSyncCountdown == 0)
+        {
+            timeSyncCountdown = TIME_SYNC_INTERVAL_SEC;
+            Net::syncSystemTime();
+        }
+#endif
     }
 
     log_info("[Model] threadDataProcHandler exit!");
@@ -212,63 +250,42 @@ bool Model::readConfig(void)
         return false;
     }
 
-    // 拷贝 sysconfig.json 的数据内容
-    char *buf = new char[4096];
-    memset(buf, 0, 4096);
-    file.read(buf, 4096);
-    file.close();
-
-    // 解析cJSON数据格式
-    cJSON *cjson = cJSON_Parse(buf);
-    if (cjson != nullptr)
+    try
     {
-        // 获取数值参数
-        int *value[] = {&_sysConfig.brightness, &_sysConfig.volume};
-        for (int i = 0; i < sizeof(value) / sizeof(value[0]); i++)
-        {
-            cJSON *item = cJSON_GetObjectItem(cjson, configNumberItemName[i]);
-            if (item != nullptr)
-                *(value[i]) = item->valueint;
-        }
+        json j = json::parse(file); // 流式解析，天然避免 4KB 截断问题
+        file.close();
 
-        // std::string *config_str[] = {&_sysConfig.mainbgFile, &_sysConfig.weatherKey}; // 字符串参数
-        // for (int i = 0; i < sizeof(config_str) / sizeof(config_str[0]); i++)
-        // {
-        //     cJSON *item = cJSON_GetObjectItem(cjson, configStringItemName[i]);
-        //     if (item != nullptr)
-        //         *(config_str[i]) = std::string(item->valuestring);
-        // }
+        _sysConfig.brightness = j.value("brightness", 50);
+        _sysConfig.volume = j.value("volume", 50);
+
+        _sysConfig.appVector.clear();
+        if (j.contains("applications") && j["applications"].is_array())
+        {
+            for (const auto &app : j["applications"])
+            {
+                AppInfo info;
+                info.name = app.value("name", "");
+                info.exec = app.value("exec", "");
+                info.argv = app.value("argv", "");
+                info.icon = app.value("icon", "");
+                info.config = app.value("config", "");
+
+                if (info.config != "")
+                    ++_legalConfigAppNum;
+
+                _sysConfig.appVector.push_back(info);
+            }
+        }
 
         printf("[Sys] param sysConfig end.\n");
-
-        // 获取应用程序
-        cJSON *applications = cJSON_GetObjectItem(cjson, "applications");
-        int array_size = cJSON_GetArraySize(applications);
-        for (int i = 0; i < array_size; i++)
-        {
-            cJSON *app_info = cJSON_GetArrayItem(applications, i);
-
-            AppInfo info;
-            std::string *app_str[] = {&info.name, &info.exec, &info.argv, &info.icon, &info.config};
-            for (int j = 0; j < sizeof(app_str) / sizeof(app_str[0]); j++)
-            {
-                cJSON *item = cJSON_GetObjectItem(app_info, appInfoItemName[j]);
-                if (item != nullptr && item->type != cJSON_NULL)
-                    *(app_str[j]) = std::string(item->valuestring);
-            }
-
-            if (info.config != "")
-                ++_legalConfigAppNum;
-
-            // 向容器插入一个元素
-            _sysConfig.appVector.push_back(info);
-        }
-
         printf("[Sys] applications sysConfig end.\n");
-
-        cJSON_Delete(cjson);
     }
-    delete[] buf;
+    catch (const std::exception &e)
+    {
+        printf("[Sys] parse sysconfig.json failed: %s\n", e.what());
+        file.close();
+        return false;
+    }
 
     return true;
 }
@@ -279,71 +296,67 @@ bool Model::readConfig(void)
  */
 void Model::saveConfig(void)
 {
-    cJSON *cjson = cJSON_CreateObject();
+    json j;
 
-    const int *value[] = {&_sysConfig.brightness, &_sysConfig.volume};
-    for (int i = 0; i < sizeof(value) / sizeof(value[0]); i++)
-        cJSON_AddNumberToObject(cjson, configNumberItemName[i], *value[i]);
+    j["brightness"] = _sysConfig.brightness;
+    j["volume"] = _sysConfig.volume;
 
-    // const std::string *configString[] = {&_sysConfig.mainbgFile, &_sysConfig.weatherKey}; // 字符串参数
-    // for (int i = 0; i < sizeof(configString) / sizeof(configString[0]); i++)
-    //     cJSON_AddStringToObject(cjson, configStringItemName[i], configString[i]->c_str());
-
-    cJSON *applications = cJSON_CreateArray();
-
-    for (AppInfo &info : _sysConfig.appVector)
+    json applications = json::array();
+    for (const AppInfo &info : _sysConfig.appVector)
     {
-        cJSON *appInfo = cJSON_CreateObject();
-
-        cJSON_AddStringToObject(appInfo, appInfoItemName[0], info.name.c_str());
-        cJSON_AddStringToObject(appInfo, appInfoItemName[1], info.exec.c_str());
-        cJSON_AddStringToObject(appInfo, appInfoItemName[2], info.argv.c_str());
-        cJSON_AddStringToObject(appInfo, appInfoItemName[3], info.icon.c_str());
-        cJSON_AddStringToObject(appInfo, appInfoItemName[4], info.config.c_str());
-
-        cJSON_AddItemToArray(applications, appInfo);
+        json appInfo;
+        appInfo["name"] = info.name;
+        appInfo["exec"] = info.exec;
+        appInfo["argv"] = info.argv;
+        appInfo["icon"] = info.icon;
+        appInfo["config"] = info.config;
+        applications.push_back(appInfo);
     }
-
-    cJSON_AddItemToObject(cjson, "applications", applications);
-
-    std::string jsonString(cJSON_Print(cjson));
+    j["applications"] = applications;
 
     std::ofstream file;
-
     file.open(CONFIG_DIR CONFIG_FILE, std::ios::out); // 写方式打开文件
-
-    file << jsonString << std::endl;
-
+    file << j.dump(4) << std::endl;
     file.close();
-
-    cJSON_Delete(cjson);
 }
 
 /**
  * @brief 运行 app 回调函数
  * @brief exec app 执行文件
  * @param app的main函数参数
- * @note 由于回调函数被UI线程(主线程)执行，因此会阻塞UI线程
+ * @note 由 UI 线程触发；内部经 Launch::runApplication 阻塞等待子进程退出
  */
 void Model::runApplication(const char *exec, char *const argv[])
 {
     if (exec == nullptr)
         return;
 
-    pid_t pid = fork(); // 创建子进程
-
-    if (pid == 0) // 子进程
+    /* 收集参数（argv[0] 是 exec，跳过） */
+    std::vector<std::string> args;
+    if (argv != nullptr)
     {
-        int ret = execv(exec, argv);
-        if (ret < 0)
-        {
-            printf("[Sys] create %s failed\n", exec);
-            exit(0); // 子进程退出
-        }
+        for (int i = 1; argv[i] != nullptr && i < 5; i++)
+            args.push_back(argv[i]);
     }
 
-    wait(nullptr); // 阻塞等待子进程返回
-    printf("[View] return to mainPage!\n");
+    /* 实例锁：/tmp/<可执行名>.lock，防止同一应用重复启动 */
+    std::string lockName = "/tmp/";
+    std::string execStr(exec);
+    size_t slash = execStr.find_last_of('/');
+    if (slash != std::string::npos)
+        lockName += execStr.substr(slash + 1);
+    else
+        lockName += execStr;
+    lockName += ".lock";
+
+    int result = Launch::runApplication(exec, args, lockName);
+    if (result == -2)
+    {
+        printf("[Model] %s already running, skip\n", exec);
+        return;
+    }
+
+    printf("[View] return to mainPage! (exit=%d)\n", result);
 
     // lv_async_call([](void *data){
     //     Model *model = (Model *)data;
@@ -365,6 +378,7 @@ char **Model::stringToArgv(const char *exec, std::string &str)
     std::string dataStr = "";
 
     char **argv = new char *[5];
+    memset(argv, 0, 5 * sizeof(char *)); // 全部置空，避免后续 delete[] 垃圾指针
 
     int len = strlen(exec) + 1;
     argv[0] = new char[len];
@@ -420,41 +434,118 @@ std::string Model::getExeDirectory(void)
     return std::string(exePath) + '/';
 }
 
-/**
- * @brief 安装应用程序
- * @param apps 应用程序表
- */
-void Model::installApplications(std::vector<AppInfo> &appVector)
+namespace
 {
-    for (AppInfo &info : appVector)
+/* 释放 stringToArgv 产生的 char**（含每个元素） */
+void freeArgv(char **argv)
+{
+    if (argv == nullptr)
+        return;
+    for (int i = 0; i < 5 && argv[i] != nullptr; i++)
+        delete[] argv[i];
+    delete[] argv;
+}
+} // namespace
+
+/**
+ * @brief 安装应用程序：.desktop 自动发现优先，sysconfig.json 的 applications 兜底合并
+ * @note 由 data 线程调用（持 _mutex），增量添加：已存在的 exec 跳过
+ */
+void Model::installApplications(void)
+{
+    /* 1. 扫描 /mnt/UDISK/applications/*.desktop（自动发现） */
+    std::vector<Launch::DesktopEntry> entries = Launch::scanApplications(_appsDir);
+
+    for (const auto &entry : entries)
     {
-        printf("[Model] install application.\n");
-        int execLen = info.exec.length();
-        int iconLen = info.icon.length();
+        /* Exec 的第一个 token 是可执行路径，其余为参数 */
+        std::string exec = entry.exec;
+        std::string args;
+        size_t space = exec.find(' ');
+        if (space != std::string::npos)
+        {
+            args = exec.substr(space + 1);
+            exec = exec.substr(0, space);
+        }
 
-        char *exec = new char[execLen + 3];
-        char *icon = new char[iconLen + 256];
+        if (_installedExec.count(exec) > 0)
+            continue; // 已添加
 
-        const char *name = info.name.c_str();
-        char **argv;
+        printf("[Model] install(desktop): %s -> %s\n", entry.name.c_str(), exec.c_str());
 
-        sprintf(exec, "./%s", info.exec.c_str());
-        sprintf(icon, "%spicture/icon/%s", getExeDirectory().c_str(), info.icon.c_str());
-        printf("[Model] exec: %s, icon: %s\n", exec, icon);
+        char *execDup = strdup(exec.c_str());
+        char **argv = stringToArgv(execDup, args);
 
-        argv = stringToArgv(exec, info.argv);
+        /* 图标：desktop 的 Icon 相对路径时拼 exe 目录；空则给空串（LVGL 无害处理） */
+        std::string iconPath = entry.icon;
+        if (!iconPath.empty() && iconPath[0] != '/')
+            iconPath = getExeDirectory() + iconPath;
+        const char *iconSrc = iconPath.empty() ? nullptr : iconPath.c_str();
 
-        // 添加应用程序到UI
-        _view.addApplication((name), exec, argv, icon);
+        _view.addApplication(entry.name.c_str(), execDup, argv, (void *)iconSrc);
 
-        delete[] icon;
-        delete[] exec;
+        _installedExec.insert(exec);
+
+        freeArgv(argv);
+        free(execDup);
     }
+
+    /* 2. sysconfig.json 的 applications 兜底（向后兼容） */
+    for (const AppInfo &info : _sysConfig.appVector)
+    {
+        if (info.exec.empty() || info.exec == "<null>")
+            continue;
+
+        std::string execPath = info.exec;
+        /* 相对路径统一转绝对路径（旧配置里是 ./eMP_xxx） */
+        if (execPath.size() >= 2 && execPath[0] == '.' && execPath[1] == '/')
+            execPath = getExeDirectory() + execPath.substr(2);
+
+        if (_installedExec.count(execPath) > 0)
+            continue; // 与 desktop 条目重复，跳过
+
+        printf("[Model] install(config): %s -> %s\n", info.name.c_str(), execPath.c_str());
+
+        char *exec = strdup(execPath.c_str());
+        std::string argsStr = info.argv;
+        char **argv = stringToArgv(exec, argsStr);
+
+        /* 图标：相对路径拼 exe 目录 + picture/icon/（保持原约定） */
+        std::string iconPath = info.icon;
+        if (!iconPath.empty() && iconPath[0] != '/')
+            iconPath = getExeDirectory() + "picture/icon/" + iconPath;
+        const char *iconSrc = iconPath.empty() ? nullptr : iconPath.c_str();
+
+        _view.addApplication(info.name.c_str(), exec, argv, (void *)iconSrc);
+
+        _installedExec.insert(execPath);
+
+        freeArgv(argv);
+        free(exec);
+    }
+}
+
+/**
+ * @brief 重载应用列表（inotify 事件触发）：增量添加新发现的 .desktop 应用
+ */
+void Model::reloadApplications(void)
+{
+    std::unique_lock<std::mutex> lock(_mutex);
+    installApplications();
+    lock.unlock();
+}
+
+void Model::appsNotifyDirHandler(const std::string &path)
+{
+    log_info("[xinotify] applications dir changed: %s", path.c_str());
+    reloadApplications();
 }
 
 void Model::udiskNotifyDirHandler(const std::string &path)
 {
     log_debug("[xinotify] exUDISK dir content is changed");
+    /* U 盘内容变化也可能带来新的 .desktop 应用，顺带重扫一次 */
+    reloadApplications();
 }
 
 /**

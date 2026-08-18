@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dirent.h>
+#include <set>
 #include <vector>
 
 #include "View.h"
@@ -43,6 +44,9 @@ namespace Page
         Xinotify _inotify;
         lv_timer_t *_timer;
 
+        std::string _appsDir;                 // .desktop 应用描述目录
+        std::set<std::string> _installedExec; // 已添加到 UI 的 app exec（去重用）
+
     private:
         /**
          * @brief LVGL处理线程
@@ -56,11 +60,13 @@ namespace Page
         void threadHttpSvrHandler(void);
 
         void runApplication(const char *exec, char *const argv[]);
-        void installApplications(std::vector<AppInfo> &appVector);
+        void installApplications(void);
+        void reloadApplications(void);
         static char **stringToArgv(const char *exec, std::string &str);
         bool readConfig(void);
         void saveConfig(void);
         void udiskNotifyDirHandler(const std::string &path);
+        void appsNotifyDirHandler(const std::string &path);
         
         void update(void);
         static void onTimerUpdate(lv_timer_t *timer);

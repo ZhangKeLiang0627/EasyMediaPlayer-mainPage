@@ -355,7 +355,8 @@ using socket_t = int;
 #endif
 #define SSL_get1_peer_certificate SSL_get_peer_certificate
 #elif OPENSSL_VERSION_NUMBER < 0x30000000L
-#error Sorry, OpenSSL versions prior to 3.0.0 are not supported
+/* OpenSSL 1.1.x：无 SSL_get1_peer_certificate（3.0 新增），
+   在下方使用处用 SSL_get_peer_certificate + X509_up_ref 兼容 */
 #endif
 
 #endif // CPPHTTPLIB_OPENSSL_SUPPORT
@@ -11084,7 +11085,12 @@ inline bool SSLClient::initialize_ssl(Socket &socket, Error &error) {
               return false;
             }
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+            X509 *server_cert = SSL_get_peer_certificate(ssl2);
+            if (server_cert != nullptr) { X509_up_ref(server_cert); }
+#else
             auto server_cert = SSL_get1_peer_certificate(ssl2);
+#endif
             auto se = detail::scope_exit([&] { X509_free(server_cert); });
 
             if (server_cert == nullptr) {

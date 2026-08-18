@@ -266,7 +266,8 @@ lv_obj_t *View::btnCreate(lv_obj_t *par, void *img_src, const char *name)
     lv_obj_remove_style_all(img);
     lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, 0);
-    lv_img_set_src(img, img_src);
+    if (img_src != nullptr)
+        lv_img_set_src(img, img_src); // 无图标时跳过（传空串会被当指针解引用崩溃）
     lv_obj_center(img);
 
     // 设置名称

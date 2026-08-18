@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +26,11 @@ Xinotify::Xinotify()
         fprintf(stderr, "inotify_init failed\n");
     }
     assert(inotify_fd_ > 0);
+    /* 显式设为非阻塞（xepoll 的 fcntl 用 F_GETFD 设置 O_NONBLOCK 无效，
+       若不加此行，HandleEvent 的 read 会阻塞、轮询线程被卡死） */
+    int flags = fcntl(inotify_fd_, F_GETFL, 0);
+    if (flags >= 0)
+        fcntl(inotify_fd_, F_SETFL, flags | O_NONBLOCK);
     MY_EPOLL.EpollAddRead(inotify_fd_, std::bind(&Xinotify::HandleEvent, this));
 #endif
     std::cout << "Inotify init" << std::endl;
@@ -146,7 +153,8 @@ int Xinotify::HandleEvent()
     int read_len = read(inotify_fd_, buf, sizeof(buf));
     if (read_len < 0)
     {
-        printf("read inotify event failed\n");
+        if (errno != EAGAIN)
+            printf("read inotify event failed\n");
         return -1;
     }
 
