@@ -103,6 +103,22 @@ Model::Model(std::function<void(void)> exitCb)
                                  { pThis->threadHttpSvrHandler(); }, this);
     _threadHttpSvr.detach();
 
+    // 若设置了 EMP_AUTOSHOT 环境变量，则延时自动截图（用于无显示环境验证 / 生成文档图）
+    const char *autoShot = getenv("EMP_AUTOSHOT");
+    if (autoShot != nullptr)
+    {
+        int sec = atoi(autoShot);
+        if (sec <= 0)
+            sec = 3;
+        lv_timer_t *shotTimer = lv_timer_create([](lv_timer_t *timer)
+                                                 {
+            Model *pThis = (Model *)timer->user_data;
+            View::takeScreenshot(); },
+                                                 sec * 1000, this);
+        lv_timer_set_repeat_count(shotTimer, 1);
+        log_info("[Model] auto screenshot scheduled in %ds", sec);
+    }
+
     // _cv.notify_all();
 }
 

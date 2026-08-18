@@ -472,6 +472,11 @@ void View::screenshot(lv_obj_t *obj)
     }
 }
 
+void View::takeScreenshot(void)
+{
+    screenshot(lv_scr_act());
+}
+
 void View::topContEventHandler(lv_event_t *event)
 {
     View *instance = (View *)lv_event_get_user_data(event);

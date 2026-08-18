@@ -63,6 +63,9 @@ namespace Page
         void addApplication(const char *name, const char *exec, char *const argv[], void *icon);
         void setUdisk(bool isAppear);
 
+        /** @brief 截取当前整屏（供 Model 的 EMP_AUTOSHOT 自动截图 / 调试用） */
+        static void takeScreenshot(void);
+
     private:
         void timeContCreate(lv_obj_t *obj);
         void topContCreate(lv_obj_t *obj);
