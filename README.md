@@ -99,7 +99,7 @@ Type=Application
 | `Type` | 必须为 `Application` |
 
 安全规则（`src/Launch/desktop_entry.cpp`）：
-- 含 shell 元字符 `|&;<>`$\\\n\r` 的 Exec 会被拒绝（防注入）
+- 含 shell 元字符 `|&;<>\`$\\\n\r` 的 Exec 会被拒绝（防注入）
 - 带路径的 Exec 必须是真实存在的可执行文件
 - 纯命令名走白名单（bash/python3/vim/vi/nano/sh）
 - `Hidden`/`NoDisplay=true` 的文件会被忽略
