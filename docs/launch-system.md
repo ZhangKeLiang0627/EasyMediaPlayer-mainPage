@@ -52,9 +52,6 @@ Icon=/path/to/icon.png
 Terminal=false
 Hidden=false
 Type=Application
-
-[config]
-AutoStart=0
 ```
 
 ### 解析规则（desktop_entry.cpp）
