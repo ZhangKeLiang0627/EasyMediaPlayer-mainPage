@@ -84,12 +84,27 @@ Type=Application
   避免整屏重建。
 - **向后兼容**：`sysconfig.json` 的 `applications` 数组作为兜底合并（同路径跳过）。
 
-### 坑：inotify fd 必须非阻塞
+### 设计：inotify fd 刻意设为阻塞
 
-原 `utils/xepoll/xepoll.cpp` 用 `fcntl(fd, F_GETFD, 0) | O_NONBLOCK` 设置非阻塞是**错的**
-（应为 `F_GETFL`），导致 inotify fd 实际阻塞、`HandleEvent` 的 read 卡死轮询线程。
-修复在 `utils/xepoll/xinotify.cpp` 构造函数：显式 `fcntl(F_GETFL) | O_NONBLOCK`。
-`HandleEvent` 对 `EAGAIN` 静默返回（无事件属正常）。
+inotify fd 在 `Xinotify` 构造函数里经 `MY_EPOLL.EpollAddRead` 注册进 epoll 轮询线程，
+而 `EpollAddRead`（`utils/xepoll/xepoll.cpp`）内部用
+`fcntl(fd, F_GETFD, 0) | O_NONBLOCK` 把 fd 强制设为非阻塞——注意这里用 `F_GETFD`
+虽写法不严谨，但 `O_NONBLOCK` 位仍会被 `F_SETFL` 写入，fd 实际已是非阻塞。
+
+我们**刻意**在 `EpollAddRead` 之后 `fcntl(F_SETFL, flags & ~O_NONBLOCK)` 把 inotify fd
+改回阻塞，理由：
+
+- 消费 inotify 的线程（epoll 轮询线程，以及 `Model` 的轮询线程）只做 inotify 一件事，
+  没有需要即时响应的其它回调；
+- epoll 是 **LT（水平触发）** 模式且 `HandleEvent` 单次 `read`，`epoll_wait` 已保证可读时
+  `read` 不会卡死；无事件时线程自然在 `epoll_wait` 中休眠；
+- 阻塞比非阻塞忙等（`EAGAIN` 空转）更省 CPU，相当于把"等待"交给内核。
+
+`HandleEvent` 仍保留对 `EAGAIN` 的防御性返回（无事件属正常）。
+
+> 历史备注：原来"必须用 `F_GETFL` 否则 fd 实际阻塞"的说法不准确——原写法用 `F_GETFD`
+> 只是没保留其它状态标志（对 inotify 无影响），`O_NONBLOCK` 位本就会被置位，并非 fd
+> 阻塞的根因；要让它阻塞，真正需要做的是显式清除 `O_NONBLOCK`（在 `EpollAddRead` 之后）。
 
 ## 4. 启动器（app_runner）
 

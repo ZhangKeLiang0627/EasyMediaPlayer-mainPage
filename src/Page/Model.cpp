@@ -209,7 +209,8 @@ void Model::threadDataProcHandler(void)
     {
         usleep(INOTIFY_POLL_US);
 
-        // 消费 inotify 事件（非阻塞），触发 appsNotifyDirHandler 自动发现
+        // 消费 inotify 事件（inotify fd 为阻塞模式，无事件时 read 在此休眠等待），
+        // 触发 appsNotifyDirHandler 自动发现
         _inotify.HandleEvent();
 
 #if defined(__arm__) || defined(__aarch64__)
