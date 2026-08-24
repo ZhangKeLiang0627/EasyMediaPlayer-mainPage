@@ -209,9 +209,9 @@ void Model::threadDataProcHandler(void)
     {
         usleep(INOTIFY_POLL_US);
 
-        // inotify 事件现由 epoll 循环线程（Xinotify 构造时注册到 MY_EPOLL）统一消费，
-        // 本线程不再调用 HandleEvent()：inotify fd 已为阻塞模式，若在此阻塞 read，
-        // 退出置 _threadExitFlag 后 join 会卡死。此循环仅保留周期对时（板子无 RTC）。
+        // inotify 事件由 epoll 循环线程（Xinotify 构造时注册到 MY_EPOLL）统一消费，
+        // 本线程不再调用 HandleEvent()：双消费者会与 epoll 线程争抢同一 fd 的 read，
+        // 且退出时 join 易卡死。此循环仅保留周期对时（板子无 RTC）。
 
 #if defined(__arm__) || defined(__aarch64__)
         // 板子无 RTC，每 60s 周期对时（main() 里已启动对时一次）

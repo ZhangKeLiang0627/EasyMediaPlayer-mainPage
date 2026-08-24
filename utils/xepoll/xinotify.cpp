@@ -1,6 +1,4 @@
 #include <assert.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,14 +25,6 @@ Xinotify::Xinotify()
     }
     assert(inotify_fd_ > 0);
     MY_EPOLL.EpollAddRead(inotify_fd_, std::bind(&Xinotify::HandleEvent, this));
-    /* 故意将 inotify fd 设为阻塞：本 epoll 轮询线程只处理 inotify 事件，
-       没有其他需要即时响应的回调；且 epoll 为 LT 模式、HandleEvent 单次
-       read，epoll_wait 已保证可读时 read 不会卡死。无事件时线程自然在
-       epoll_wait 中休眠，比非阻塞忙等更省 CPU。必须在 EpollAddRead 之后
-       清除 O_NONBLOCK，因为 EpollAddRead 内部会把 fd 强制设为非阻塞。 */
-    int flags = fcntl(inotify_fd_, F_GETFL, 0);
-    if (flags >= 0)
-        fcntl(inotify_fd_, F_SETFL, flags & ~O_NONBLOCK);
 #endif
     std::cout << "Inotify init" << std::endl;
 }
@@ -152,13 +142,11 @@ int Xinotify::HandleEvent()
     struct inotify_event *event;
     int event_size = sizeof(struct inotify_event);
 
-    // 读取事件（inotify fd 为阻塞模式，但本函数只在 epoll_wait 报告可读后
-    // 才被调用，且采用 LT 模式单次 read，故不会阻塞；保留 EAGAIN 防御）
+    // 读取事件（非阻塞，因为fd已被设置为非阻塞模式）
     int read_len = read(inotify_fd_, buf, sizeof(buf));
     if (read_len < 0)
     {
-        if (errno != EAGAIN)
-            printf("read inotify event failed\n");
+        printf("read inotify event failed\n");
         return -1;
     }
 
