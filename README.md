@@ -89,9 +89,6 @@ Name=Token Monitor
 Exec=/mnt/UDISK/eMP_tokenMonitor
 Icon=
 Type=Application
-
-[config]
-AutoStart=0
 ```
 
 | 字段 | 说明 |
@@ -100,7 +97,6 @@ AutoStart=0
 | `Exec` | 可执行文件绝对路径 + 可选参数（必填，须通过安全检查） |
 | `Icon` | 图标路径（绝对路径，或相对 `eMP_mainPage` 可执行目录；留空则按钮无图标） |
 | `Type` | 必须为 `Application` |
-| `[config]` | 自定义扩展段，key=value 供应用使用（如开机自启配置） |
 
 安全规则（`src/Launch/desktop_entry.cpp`）：
 - 含 shell 元字符 `|&;<>`$\\\n\r` 的 Exec 会被拒绝（防注入）
