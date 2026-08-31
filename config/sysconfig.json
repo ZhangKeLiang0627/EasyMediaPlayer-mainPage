@@ -3,6 +3,13 @@
   "volume": 50,
   "applications": [
     {
+      "name": "GBA",
+      "exec": "/mnt/UDISK/eMP_gba",
+      "argv": "<null>",
+      "icon": "doge.png",
+      "config": "eMP_gba.json"
+    },
+    {
       "name": "videoPlayer",
       "exec": "eMP_video",
       "argv": "<null>",
